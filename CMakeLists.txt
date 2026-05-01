@@ -91,6 +91,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 # Fix LIBCMT conflict warning
 if(MSVC)
     set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS "/NODEFAULTLIB:LIBCMT")
+    target_compile_options(${PROJECT_NAME} PRIVATE "/utf-8")
 endif()
 
 # --- Output Configuration ---
