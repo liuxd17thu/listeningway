@@ -62,7 +62,7 @@ static void DrawToggles() {
         }
     }
 
-    if (ImGui::BeginCombo("Audio Analysis", provider_names[display_selection_index])) {
+    if (ImGui::BeginCombo("音频分析", provider_names[display_selection_index])) {
         int previous_selection = display_selection_index;
         bool switching_provider = g_switching_provider;
         for (int i = 0; i < provider_names.size(); ++i) {
@@ -101,7 +101,7 @@ static void DrawToggles() {
 
     // Use the global debug flag directly, then synchronize with configManager through SetDebugEnabled
     bool debug_enabled = g_listeningway_debug_enabled;
-    if (ImGui::Checkbox("Enable Debug Logging", &debug_enabled)) {
+    if (ImGui::Checkbox("启用调试日志", &debug_enabled)) {
         SetDebugEnabled(debug_enabled);
         LOG_DEBUG(std::string("[Overlay] Debug Logging toggled ") + (debug_enabled ? "ON" : "OFF"));
     }
@@ -110,19 +110,19 @@ static void DrawToggles() {
 // Helper: Draw log file info
 static void DrawLogInfo() {
     if (g_listeningway_debug_enabled) {
-        ImGui::Text("Log file: ");
+        ImGui::Text("日志文件: ");
         ImGui::SameLine();
         std::string logPath = GetLogFilePath();
         if (ImGui::Selectable(logPath.c_str())) {
             ShellExecuteA(nullptr, "open", logPath.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
         }
-        ImGui::Text("(Click to open log file)");
+        ImGui::Text("(点击打开日志文件)");
     }
 }
 
 // Helper: Draw website link
 static void DrawWebsite() {
-    ImGui::Text("Website:");
+    ImGui::Text("网站(EN):");
     ImGui::SameLine();
     if (ImGui::Selectable("https://github.com/gposingway/Listeningway")) {
         ShellExecuteA(nullptr, "open", "https://github.com/gposingway/Listeningway", nullptr, nullptr, SW_SHOWNORMAL);
@@ -135,7 +135,7 @@ static void DrawVolume(const AudioAnalysisData& data) {
     auto& config = g_configManager.GetConfig();
     float amp = config.frequency.amplifier;
     ImGui::AlignTextToFramePadding();
-    ImGui::Text("Volume:");
+    ImGui::Text("音量:");
     ImGui::SameLine();
     ImGui::ProgressBar(std::clamp(data.volume * amp, 0.0f, 1.0f), ImVec2(ImGui::GetContentRegionAvail().x, 0.0f));
 }
@@ -145,7 +145,7 @@ static void DrawBeat(const AudioAnalysisData& data) {
     auto& config = g_configManager.GetConfig();
     float amp = config.frequency.amplifier;
     ImGui::AlignTextToFramePadding();
-    ImGui::Text("Beat:");
+    ImGui::Text("节拍:");
     ImGui::SameLine();
     ImGui::ProgressBar(std::clamp(data.beat * amp, 0.0f, 1.0f), ImVec2(ImGui::GetContentRegionAvail().x, 0.0f));
 }
@@ -155,7 +155,7 @@ static void DrawFrequencyBands(const AudioAnalysisData& data) {
     auto& config = g_configManager.GetConfig();
     float amp = config.frequency.amplifier;
     ImGui::AlignTextToFramePadding();
-    ImGui::TextUnformatted("Frequency Bands");
+    ImGui::TextUnformatted("频带");
     
     size_t band_count = data.freq_bands.size();
     
@@ -210,22 +210,22 @@ static void DrawTimePhaseInfo() {
     float phase_120hz = std::fmod(time_seconds * 120.0f, 1.0f);
     float total_phases_60hz = time_seconds * 60.0f;
     float total_phases_120hz = time_seconds * 120.0f;
-    ImGui::Text("Time/Phase Uniforms:");
-    ImGui::Text("  Seconds: %.3f", time_seconds);
-    ImGui::Text("  Phase 60Hz: %.3f", phase_60hz);
-    ImGui::Text("  Phase 120Hz: %.3f", phase_120hz);
-    ImGui::Text("  Total 60Hz cycles: %.1f", total_phases_60hz);
-    ImGui::Text("  Total 120Hz cycles: %.1f", total_phases_120hz);
+    ImGui::Text("时间/相位 输入变量:");
+    ImGui::Text("  秒:           %.3f", time_seconds);
+    ImGui::Text("  相位 60Hz:    %.3f", phase_60hz);
+    ImGui::Text("  相位 120Hz:   %.3f", phase_120hz);
+    ImGui::Text("  总周期 60Hz:  %.1f", total_phases_60hz);
+    ImGui::Text("  总周期 120Hz: %.1f", total_phases_120hz);
 }
 
 // Helper: Draw Beat Detection Algorithm settings
 static void DrawBeatDetectionAlgorithm(const AudioAnalysisData& data) {
     auto& config = g_configManager.GetConfig();
     
-    ImGui::Text("Beat Detection Algorithm:");
+    ImGui::Text("节拍检测算法:");
     
     // Create a combo box for algorithm selection
-    const char* algorithms[] = { "Simple Energy (Original)", "Spectral Flux + Autocorrelation (Advanced)" };    int algorithm = config.beat.algorithm;    if (ImGui::Combo("Algorithm", &algorithm, algorithms, IM_ARRAYSIZE(algorithms))) {
+    const char* algorithms[] = { "简单能量 (原始)", "谱通量 + 自相关 (高级)" };    int algorithm = config.beat.algorithm;    if (ImGui::Combo("算法", &algorithm, algorithms, IM_ARRAYSIZE(algorithms))) {
         config.beat.algorithm = algorithm;
         LOG_DEBUG(std::string("[Overlay] Beat Detection Algorithm changed to ") + 
                  (algorithm == 0 ? "Simple Energy" : "Spectral Flux + Autocorrelation"));
@@ -235,25 +235,25 @@ static void DrawBeatDetectionAlgorithm(const AudioAnalysisData& data) {
     
     if (ImGui::IsItemHovered(-1)) {
         if (config.beat.algorithm == 0) {
-            ImGui::SetTooltip("Simple Energy: Works well with strong bass beats");
+            ImGui::SetTooltip("简单能量: 低频贝斯节拍效果较好");
         } else {
-            ImGui::SetTooltip("Advanced: Better for complex rhythms and various music genres");
+            ImGui::SetTooltip("高级: 适合复杂旋律和各种音乐类型");
         }
     }
     
     // Show advanced settings for the Spectral Flux + Autocorrelation algorithm
     if (config.beat.algorithm == 1) {
         // Create a collapsing section for advanced parameters
-        if (ImGui::CollapsingHeader("Advanced Algorithm Parameters", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (ImGui::CollapsingHeader("高级算法参数", ImGuiTreeNodeFlags_DefaultOpen)) {
             // Spectral Flux threshold adjustment
             float spectral_flux_threshold = config.beat.spectralFluxThreshold;
             if (ImGui::SliderFloat("##SpectralFluxThreshold", &spectral_flux_threshold, 0.01f, 0.2f, "%.3f")) {
                 config.beat.spectralFluxThreshold = spectral_flux_threshold;
             }
             ImGui::SameLine();
-            ImGui::Text("Spectral Flux Threshold");
+            ImGui::Text("谱通量阈值");
             if (ImGui::IsItemHovered(-1)) {
-                ImGui::SetTooltip("Lower value = more sensitive to subtle changes");            }
+                ImGui::SetTooltip("数值越低，节拍检测越敏感");            }
             
             // Tempo change threshold adjustment
             float tempo_change_threshold = config.beat.tempoChangeThreshold;
@@ -261,9 +261,9 @@ static void DrawBeatDetectionAlgorithm(const AudioAnalysisData& data) {
                 config.beat.tempoChangeThreshold = tempo_change_threshold;
             }
             ImGui::SameLine();
-            ImGui::Text("Tempo Change Threshold");
+            ImGui::Text("节奏变化阈值");
             if (ImGui::IsItemHovered(-1)) {
-                ImGui::SetTooltip("Higher value = more stable tempo, lower = adapts faster");
+                ImGui::SetTooltip("数值越高，节奏变化越平稳，反之更快");
             }
               // Beat induction window adjustment
             float beat_induction_window = config.beat.beatInductionWindow;
@@ -271,9 +271,9 @@ static void DrawBeatDetectionAlgorithm(const AudioAnalysisData& data) {
                 config.beat.beatInductionWindow = beat_induction_window;
             }
             ImGui::SameLine();
-            ImGui::Text("Beat Induction Window");
+            ImGui::Text("节拍归纳窗");
             if (ImGui::IsItemHovered(-1)) {
-                ImGui::SetTooltip("Larger window = more adaptive phase adjustment");
+                ImGui::SetTooltip("窗口越大，相位调节越为适应");
             }
               // Octave error weight adjustment
             float octave_error_weight = config.beat.octaveErrorWeight;
@@ -281,17 +281,17 @@ static void DrawBeatDetectionAlgorithm(const AudioAnalysisData& data) {
                 config.beat.octaveErrorWeight = octave_error_weight;
             }
             ImGui::SameLine();
-            ImGui::Text("Octave Error Weight");
+            ImGui::Text("倍频误差权重");
             if (ImGui::IsItemHovered(-1)) {
-                ImGui::SetTooltip("Higher values favor base tempo vs half/double detection");
+                ImGui::SetTooltip("数值越高，越偏好找到相对半频/倍频而言的基准频率");
             }
             
             // Display current tempo info directly (no tree node)
             if (data.tempo_detected) {
-                ImGui::Text("Current Tempo: %.1f BPM (Confidence: %.2f)", data.tempo_bpm, data.tempo_confidence);
-                ImGui::Text("Beat Phase: %.2f", data.beat_phase);
+                ImGui::Text("当前节拍: %.1f BPM (置信度: %.2f)", data.tempo_bpm, data.tempo_confidence);
+                ImGui::Text("节拍相位: %.2f", data.beat_phase);
             } else {
-                ImGui::Text("No tempo detected yet");
+                ImGui::Text("未检测到节拍");
             }
         }
     }
@@ -300,35 +300,35 @@ static void DrawBeatDetectionAlgorithm(const AudioAnalysisData& data) {
 // Helper: Draw Beat Decay Settings for both algorithms
 static void DrawBeatDecaySettings() {
     auto& config = g_configManager.GetConfig();
-    ImGui::Text("Beat Decay Settings:");
+    ImGui::Text("节拍衰减测试:");
     if (config.beat.algorithm == 0) {
         float beat_falloff_default = config.beat.falloffDefault;
         if (ImGui::SliderFloat("##DefaultFalloffRate", &beat_falloff_default, 0.5f, 5.0f, "%.2f")) {
             config.beat.falloffDefault = beat_falloff_default;
         }
         ImGui::SameLine();
-        ImGui::Text("Default Falloff Rate");
+        ImGui::Text("默认衰减率");
         if (ImGui::IsItemHovered(-1)) {
-            ImGui::SetTooltip("Controls how quickly the beat indicator fades out\nHigher values = faster decay");
+            ImGui::SetTooltip("控制节拍指示器衰减的速度，数值越高，衰减越快");
         }
-        if (ImGui::CollapsingHeader("Adaptive Falloff Settings")) {
+        if (ImGui::CollapsingHeader("自适应衰减设置")) {
             float beat_time_scale = config.beat.timeScale;
             if (ImGui::SliderFloat("##TimeScale", &beat_time_scale, 1e-10f, 1e-8f, "%.2e")) {
                 config.beat.timeScale = beat_time_scale;
             }
             ImGui::SameLine();
-            ImGui::Text("Time Scale");
+            ImGui::Text("时间比例");
             if (ImGui::IsItemHovered(-1)) {
-                ImGui::SetTooltip("Controls time scaling for beat interval");
+                ImGui::SetTooltip("节拍周期的时间缩放");
             }
             float beat_time_initial = config.beat.timeInitial;
             if (ImGui::SliderFloat("##InitialTime", &beat_time_initial, 0.1f, 1.0f, "%.2f")) {
                 config.beat.timeInitial = beat_time_initial;
             }
             ImGui::SameLine();
-            ImGui::Text("Initial Time");
+            ImGui::Text("初始时间");
             if (ImGui::IsItemHovered(-1)) {
-                ImGui::SetTooltip("Controls initial time since last beat");
+                ImGui::SetTooltip("自上一拍起的初始时间");
             }
             float beat_time_min = config.beat.timeMin;
             if (ImGui::SliderFloat("##MinTime", &beat_time_min, 0.01f, 0.5f, "%.2f")) {
@@ -337,16 +337,16 @@ static void DrawBeatDecaySettings() {
             ImGui::SameLine();
             ImGui::Text("Min Time");
             if (ImGui::IsItemHovered(-1)) {
-                ImGui::SetTooltip("Controls minimum time for adaptive falloff");
+                ImGui::SetTooltip("自适应衰减的最小时间");
             }
             float beat_time_divisor = config.beat.timeDivisor;
             if (ImGui::SliderFloat("##TimeDivisor", &beat_time_divisor, 0.01f, 1.0f, "%.2f")) {
                 config.beat.timeDivisor = beat_time_divisor;
             }
             ImGui::SameLine();
-            ImGui::Text("Time Divisor");
+            ImGui::Text("时间除数");
             if (ImGui::IsItemHovered(-1)) {
-                ImGui::SetTooltip("Controls divisor for adaptive falloff\nThese settings control how decay adapts to beat timing");
+                ImGui::SetTooltip("自适应衰减的时间除数，它能控制衰减适应节拍时间的方式");
             }
         }
     } else {
@@ -355,9 +355,9 @@ static void DrawBeatDecaySettings() {
             config.beat.spectralFluxDecayMultiplier = spectral_flux_decay_multiplier;
         }
         ImGui::SameLine();
-        ImGui::Text("Decay Multiplier");
+        ImGui::Text("衰减倍率");
         if (ImGui::IsItemHovered(-1)) {
-            ImGui::SetTooltip("Controls how quickly the beat indicator fades out\nHigher values = faster decay relative to tempo\nThis algorithm automatically adapts to music tempo");
+            ImGui::SetTooltip("节拍指示器衰减的速度，数值越高，相对节拍的衰减越快。随音乐节拍自适应变化");
         }
     }
 }
@@ -366,7 +366,7 @@ static void DrawBeatDecaySettings() {
 static void DrawFrequencyBoostSettings() {
     auto& config = g_configManager.GetConfig();
     
-    if (ImGui::CollapsingHeader("Frequency Boost Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (ImGui::CollapsingHeader("频率增强设置", ImGuiTreeNodeFlags_DefaultOpen)) {
         ImGui::PushID("Equalizer");
           // Use the same compact style as Frequency Band Mapping with text on the right
         float equalizer_band1 = config.frequency.equalizerBands[0];
@@ -374,45 +374,45 @@ static void DrawFrequencyBoostSettings() {
             config.frequency.equalizerBands[0] = equalizer_band1;
         }
         ImGui::SameLine();
-        ImGui::Text("Low (Bass)");
+        ImGui::Text("低频");
         if (ImGui::IsItemHovered(-1)) {
-            ImGui::SetTooltip("Boost for lowest frequency bands (bass)");
+            ImGui::SetTooltip("低频增强");
         }
           float equalizer_band2 = config.frequency.equalizerBands[1];
         if (ImGui::SliderFloat("##band2", &equalizer_band2, OVERLAY_EQ_BAND_MIN, OVERLAY_EQ_BAND_MAX, "%.2f")) {
             config.frequency.equalizerBands[1] = equalizer_band2;
         }
         ImGui::SameLine();
-        ImGui::Text("Low-Mid");
+        ImGui::Text("中低频");
         if (ImGui::IsItemHovered(-1)) {
-            ImGui::SetTooltip("Boost for low-mid frequency bands");
+            ImGui::SetTooltip("中低频增强");
         }
           float equalizer_band3 = config.frequency.equalizerBands[2];
         if (ImGui::SliderFloat("##band3", &equalizer_band3, OVERLAY_EQ_BAND_MIN, OVERLAY_EQ_BAND_MAX, "%.2f")) {
             config.frequency.equalizerBands[2] = equalizer_band3;
         }
         ImGui::SameLine();
-        ImGui::Text("Mid");
+        ImGui::Text("中频");
         if (ImGui::IsItemHovered(-1)) {
-            ImGui::SetTooltip("Boost for mid frequency bands");
+            ImGui::SetTooltip("中频增强");
         }
           float equalizer_band4 = config.frequency.equalizerBands[3];
         if (ImGui::SliderFloat("##band4", &equalizer_band4, OVERLAY_EQ_BAND_MIN, OVERLAY_EQ_BAND_MAX, "%.2f")) {
             config.frequency.equalizerBands[3] = equalizer_band4;
         }
         ImGui::SameLine();
-        ImGui::Text("Mid-High");
+        ImGui::Text("中高频");
         if (ImGui::IsItemHovered(-1)) {
-            ImGui::SetTooltip("Boost for mid-high frequency bands");
+            ImGui::SetTooltip("中高频增强");
         }
           float equalizer_band5 = config.frequency.equalizerBands[4];
         if (ImGui::SliderFloat("##band5", &equalizer_band5, OVERLAY_EQ_BAND_MIN, OVERLAY_EQ_BAND_MAX, "%.2f")) {
             config.frequency.equalizerBands[4] = equalizer_band5;
         }
         ImGui::SameLine();
-        ImGui::Text("High (Treble)");
+        ImGui::Text("高频");
         if (ImGui::IsItemHovered(-1)) {
-            ImGui::SetTooltip("Boost for highest frequency bands (treble)");
+            ImGui::SetTooltip("高频增强");
         }
         
         ImGui::PopID();
@@ -422,9 +422,9 @@ static void DrawFrequencyBoostSettings() {
             config.frequency.equalizerWidth = equalizer_width;
         }
         ImGui::SameLine();
-        ImGui::Text("Equalizer Width");
+        ImGui::Text("均衡宽度");
         if (ImGui::IsItemHovered(-1)) {
-            ImGui::SetTooltip("Controls band influence on neighboring frequencies\nLower = narrow bands with less overlap\nHigher = wider bands with more influence");
+            ImGui::SetTooltip("频带对相邻频率的影响，数值越低，频带越窄、交叠更少");
         }
     }
 }
@@ -432,13 +432,13 @@ static void DrawFrequencyBoostSettings() {
 // Helper: Draw spatialization info (left/right volume and pan)
 static void DrawSpatialization(const AudioAnalysisData& data) {
     // Align all progress bars to the same X position
-    float label_width = ImGui::CalcTextSize("Pan Angle:").x;
+    float label_width = ImGui::CalcTextSize("声像角度:").x;
     float bar_start_x = ImGui::GetCursorPosX() + label_width + ImGui::GetStyle().ItemSpacing.x * 2.0f;
     float bar_width = ImGui::GetContentRegionAvail().x - (bar_start_x - ImGui::GetCursorPosX());
 
     // Left Volume
     ImGui::AlignTextToFramePadding();
-    ImGui::Text("Left:");
+    ImGui::Text("左:");
     ImGui::SameLine(bar_start_x);
     ImGui::ProgressBar(data.volume_left, ImVec2(bar_width, 0.0f));
     ImGui::SameLine();
@@ -446,7 +446,7 @@ static void DrawSpatialization(const AudioAnalysisData& data) {
 
     // Right Volume
     ImGui::AlignTextToFramePadding();
-    ImGui::Text("Right:");
+    ImGui::Text("右:");
     ImGui::SameLine(bar_start_x);
     ImGui::ProgressBar(data.volume_right, ImVec2(bar_width, 0.0f));
     ImGui::SameLine();
@@ -466,17 +466,17 @@ static void DrawVolumeSpatializationBeat(const AudioAnalysisData& data) {
     auto& config = g_configManager.GetConfig();
     float amp = config.frequency.amplifier;
     // Find the widest label
-    float label_width = ImGui::CalcTextSize("Pan Angle:").x;
-    label_width = std::max(label_width, ImGui::CalcTextSize("Volume:").x);
-    label_width = std::max(label_width, ImGui::CalcTextSize("Left:").x);
-    label_width = std::max(label_width, ImGui::CalcTextSize("Right:").x);
-    label_width = std::max(label_width, ImGui::CalcTextSize("Beat:").x);
-    label_width = std::max(label_width, ImGui::CalcTextSize("Format:").x);
-    label_width = std::max(label_width, ImGui::CalcTextSize("Pan Smooth:").x);
+    float label_width = ImGui::CalcTextSize("声像角度:").x;
+    label_width = std::max(label_width, ImGui::CalcTextSize("音量:").x);
+    label_width = std::max(label_width, ImGui::CalcTextSize("左:").x);
+    label_width = std::max(label_width, ImGui::CalcTextSize("右:").x);
+    label_width = std::max(label_width, ImGui::CalcTextSize("节拍:").x);
+    label_width = std::max(label_width, ImGui::CalcTextSize("格式:").x);
+    label_width = std::max(label_width, ImGui::CalcTextSize("声像平滑:").x);
     float bar_start_x = ImGui::GetCursorPosX() + label_width + ImGui::GetStyle().ItemSpacing.x * 2.0f;
     float bar_width = ImGui::GetContentRegionAvail().x - (bar_start_x - ImGui::GetCursorPosX());    // Volume (overall)
     ImGui::AlignTextToFramePadding();
-    ImGui::Text("Volume:");
+    ImGui::Text("音量:");
     ImGui::SameLine(bar_start_x);
     
     // Get the screen position right after the progress bar for proper alignment
@@ -603,19 +603,19 @@ static void DrawVolumeSpatializationBeat(const AudioAnalysisData& data) {
     ImGui::Dummy(ImVec2(0, OVERLAY_BAR_SPACING_LARGE));
     // Beat
     ImGui::AlignTextToFramePadding();
-    ImGui::Text("Beat:");
+    ImGui::Text("节拍:");
     ImGui::SameLine(bar_start_x);
     ImGui::ProgressBar(data.beat, ImVec2(bar_width, 0.0f));
     ImGui::SameLine();
     ImGui::Text("%.2f", data.beat * amp);    // Audio Format
     ImGui::AlignTextToFramePadding();
-    ImGui::Text("Format:");
+    ImGui::Text("格式:");
     ImGui::SameLine(bar_start_x);
     AudioFormat format = AudioFormatUtils::IntToFormat(static_cast<int>(data.audio_format));
     const char* format_name = AudioFormatUtils::FormatToString(format);
     ImGui::Text("%s (%.0f)", format_name, data.audio_format);// Pan Smoothing
     ImGui::AlignTextToFramePadding();
-    ImGui::Text("Pan Smooth:");
+    ImGui::Text("声像平滑:");
     ImGui::SameLine(bar_start_x);
     float pan_smoothing = config.audio.panSmoothing;
     ImGui::PushItemWidth(bar_width);
@@ -624,12 +624,12 @@ static void DrawVolumeSpatializationBeat(const AudioAnalysisData& data) {
     }
     ImGui::PopItemWidth();
     if (ImGui::IsItemHovered(-1)) {
-        ImGui::SetTooltip("Reduces pan jitter. 0.0 = no smoothing (current behavior), higher values = more smoothing");
+        ImGui::SetTooltip("减少声像抖动，0.0对应不平滑处理，数值越高越为平滑");
     }
     // Pan Offset slider (full width, under Pan Smoothing)
     float pan_offset = config.audio.panOffset;
     ImGui::AlignTextToFramePadding();
-    ImGui::Text("Pan Offset:");
+    ImGui::Text("声像偏移:");
     ImGui::SameLine(bar_start_x);
     ImGui::PushItemWidth(bar_width);
     if (ImGui::SliderFloat("##PanOffset", &pan_offset, OVERLAY_PAN_OFFSET_MIN, OVERLAY_PAN_OFFSET_MAX, "%.2f")) {
@@ -637,7 +637,7 @@ static void DrawVolumeSpatializationBeat(const AudioAnalysisData& data) {
     }
     ImGui::PopItemWidth();
     if (ImGui::IsItemHovered(-1)) {
-        ImGui::SetTooltip("Adjusts the detected pan left/right. -1 = full left, 0 = no offset, +1 = full right. Use to compensate for system or room bias.");
+        ImGui::SetTooltip("调整检测到的声像左右偏移。-1、0、1对应左中右。");
     }
     // Amplifier slider (full width, aligned under Pan Smooth, with label)
     float amplifier = config.frequency.amplifier;
@@ -656,7 +656,7 @@ static void DrawVolumeSpatializationBeat(const AudioAnalysisData& data) {
         ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, lerped);
     }
     ImGui::AlignTextToFramePadding();
-    ImGui::Text("Amplifier:");
+    ImGui::Text("放大:");
     ImGui::SameLine(bar_start_x);
     ImGui::PushItemWidth(bar_width);
     if (ImGui::SliderFloat("##Amplifier", &amplifier, OVERLAY_AMPLIFIER_MIN, OVERLAY_AMPLIFIER_MAX, "%.2f")) {
@@ -667,7 +667,7 @@ static void DrawVolumeSpatializationBeat(const AudioAnalysisData& data) {
         ImGui::PopStyleColor(2);
     }
     if (ImGui::IsItemHovered(-1)) {
-        ImGui::SetTooltip("Scales all visualization values (volume, beat, bands). Useful for low-volume systems.");
+        ImGui::SetTooltip("放大所有可视化值（音量、节拍、频带），检测到的声音过低时使用。");
     }
 }
 
@@ -694,14 +694,14 @@ void DrawListeningwayDebugOverlay(const AudioAnalysisData& data) {
         
         // Beat Decay Settings
         DrawBeatDecaySettings();
-        ImGui::Separator();        ImGui::Text("Frequency Band Mapping:");
+        ImGui::Separator();        ImGui::Text("频带映射:");
         auto& config = g_configManager.GetConfig();
         bool band_log_scale = config.frequency.logScaleEnabled;
-        if (ImGui::Checkbox("Logarithmic Bands", &band_log_scale)) {
+        if (ImGui::Checkbox("对数频带", &band_log_scale)) {
             config.frequency.logScaleEnabled = band_log_scale;
         }
         if (ImGui::IsItemHovered(-1)) {
-            ImGui::SetTooltip("Log scale better matches hearing; linear is legacy");
+            ImGui::SetTooltip("对数频带更匹配人耳听觉");
         }
         
         // Display log-specific settings only when log scale is enabled
@@ -711,9 +711,9 @@ void DrawListeningwayDebugOverlay(const AudioAnalysisData& data) {
                 config.frequency.logStrength = band_log_strength;
             }
             ImGui::SameLine();
-            ImGui::Text("Log Strength");
+            ImGui::Text("对数强度");
             if (ImGui::IsItemHovered(-1)) {
-                ImGui::SetTooltip("Controls bass detail in logarithmic scale");
+                ImGui::SetTooltip("对数比例下控制低频细节");
             }
         
             float band_min_freq = config.frequency.minFreq;
@@ -721,9 +721,9 @@ void DrawListeningwayDebugOverlay(const AudioAnalysisData& data) {
                 config.frequency.minFreq = band_min_freq;
             }
             ImGui::SameLine();
-            ImGui::Text("Min Freq (Hz)");
+            ImGui::Text("最小频率 (Hz)");
             if (ImGui::IsItemHovered(-1)) {
-                ImGui::SetTooltip("Minimum frequency for frequency bands");
+                ImGui::SetTooltip("频带的最小频率");
             }
             
             float band_max_freq = config.frequency.maxFreq;
@@ -731,9 +731,9 @@ void DrawListeningwayDebugOverlay(const AudioAnalysisData& data) {
                 config.frequency.maxFreq = band_max_freq;
             }
             ImGui::SameLine();
-            ImGui::Text("Max Freq (Hz)");
+            ImGui::Text("最大频率 (Hz)");
             if (ImGui::IsItemHovered(-1)) {
-                ImGui::SetTooltip("Maximum frequency for frequency bands");
+                ImGui::SetTooltip("频带的最大频率");
             }
 
         }
@@ -742,9 +742,9 @@ void DrawListeningwayDebugOverlay(const AudioAnalysisData& data) {
         // 5-band equalizer settings
         DrawFrequencyBoostSettings();
         ImGui::Separator();        // Band-limited Beat Detection Settings
-        ImGui::Text("Band-Limited Beat Detection:");
+        ImGui::Text("带限节拍检测:");
         if (ImGui::IsItemHovered(-1)) {
-            ImGui::SetTooltip("Focus beat detection on specific frequency range, e.g., bass/kick drums");
+            ImGui::SetTooltip("在特定频带上检测节拍");
         }
         
         float beat_min_freq = config.beat.minFreq;
@@ -752,23 +752,23 @@ void DrawListeningwayDebugOverlay(const AudioAnalysisData& data) {
             config.beat.minFreq = beat_min_freq;
         }
         ImGui::SameLine();
-        ImGui::Text("Beat Min Freq (Hz)");
+        ImGui::Text("节拍最小频率 (Hz)");
         
         float beat_max_freq = config.beat.maxFreq;
         if (ImGui::SliderFloat("##BeatMaxFreq", &beat_max_freq, OVERLAY_BEAT_MAX_FREQ_MIN, OVERLAY_BEAT_MAX_FREQ_MAX, "%.1f")) {
             config.beat.maxFreq = beat_max_freq;
         }
         ImGui::SameLine();
-        ImGui::Text("Beat Max Freq (Hz)");
+        ImGui::Text("节拍最大频率 (Hz)");
         
         float flux_low_alpha = config.beat.fluxLowAlpha;
         if (ImGui::SliderFloat("##LowFluxSmoothing", &flux_low_alpha, OVERLAY_FLUX_SMOOTH_MIN, OVERLAY_FLUX_SMOOTH_MAX, "%.3f")) {
             config.beat.fluxLowAlpha = flux_low_alpha;
         }
         ImGui::SameLine();
-        ImGui::Text("Low Flux Smoothing");
+        ImGui::Text("低通量平滑");
         if (ImGui::IsItemHovered(-1)) {
-            ImGui::SetTooltip("Lower value = smoother, higher = more responsive");
+            ImGui::SetTooltip("数值越低响应越平滑");
         }
         
         float flux_low_threshold_multiplier = config.beat.fluxLowThresholdMultiplier;
@@ -776,19 +776,19 @@ void DrawListeningwayDebugOverlay(const AudioAnalysisData& data) {
             config.beat.fluxLowThresholdMultiplier = flux_low_threshold_multiplier;
         }
         ImGui::SameLine();
-        ImGui::Text("Low Flux Threshold");
+        ImGui::Text("低通量阈值");
         if (ImGui::IsItemHovered(-1)) {
-            ImGui::SetTooltip("Lower value = more sensitive, higher = less false positives");
+            ImGui::SetTooltip("数值越低越敏感");
         }
         
         ImGui::Separator();
           // Consolidated buttons for Save, Load and Default
-        ImGui::Text("Settings Management:");
+        ImGui::Text("设置管理:");
         
         // Use columns to position the buttons side by side with equal width
         ImGui::Columns(3, "settings_buttons", false);
         // Save button
-        if (ImGui::Button("Save Settings", ImVec2(-1, 0))) {
+        if (ImGui::Button("保存设置", ImVec2(-1, 0))) {
             if (g_configManager.Save()) {
                 LOG_DEBUG("[Overlay] Settings saved to file");
             } else {
@@ -797,7 +797,7 @@ void DrawListeningwayDebugOverlay(const AudioAnalysisData& data) {
         }
         ImGui::NextColumn();
         // Load button
-        if (ImGui::Button("Load Settings", ImVec2(-1, 0))) {
+        if (ImGui::Button("加载设置", ImVec2(-1, 0))) {
             if (g_configManager.Load()) {
                 LOG_DEBUG("[Overlay] Settings loaded from file");
                 // No longer re-apply config here; ConfigurationManager handles it
@@ -807,7 +807,7 @@ void DrawListeningwayDebugOverlay(const AudioAnalysisData& data) {
         }
         ImGui::NextColumn();
         // Default button
-        if (ImGui::Button("Reset to Default", ImVec2(-1, 0))) {
+        if (ImGui::Button("重置为默认值", ImVec2(-1, 0))) {
             g_configManager.ResetToDefaults();
             LOG_DEBUG("[Overlay] Settings reset to default values");
             // No longer re-apply config here; ConfigurationManager handles it
