@@ -2,459 +2,221 @@
 
 # Listeningway
 
-**Real-time audio visualization for ReShade shaders**
+**Real-time audio analysis DSP add-on for ReShade**
 
-![Listeningway Showcase](https://github.com/user-attachments/assets/8a11d6b6-bdea-4c31-9614-dbfb7ad8819f)
+![Listeningway Showcase](https://github.com/user-attachments/assets/07a324e2-46a8-4a36-88ab-3a57e5e4db70)
+![Listeningway Showcase](https://github.com/user-attachments/assets/a474e86f-805b-4726-948b-dac4a6207e13)
+
+
+
+
+
+
 
 [<img src="https://github.com/user-attachments/assets/20794810-9e43-4167-bb0e-faf46275186e">](https://github.com/gposingway/Listeningway/releases/latest)
 
-
----
-
-![GitHub release (latest by date)](https://img.shields.io/github/v/release/gposingway/Listeningway)
-![GitHub all releases](https://img.shields.io/github/downloads/gposingway/Listeningway/total)
-[![License: CC BY 4.0](https://img.shields.io/badge/License-CC%20BY%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by/4.0/)
-![GitHub last commit](https://img.shields.io/github/last-commit/gposingway/Listeningway/dev)
-![Code Size](https://img.shields.io/github/languages/code-size/gposingway/Listeningway)
-![GitHub top language](https://img.shields.io/github/languages/top/gposingway/Listeningway)
-![GitHub issues](https://img.shields.io/github/issues/gposingway/Listeningway)
-![GitHub contributors](https://img.shields.io/github/contributors/gposingway/Listeningway)
-
 </div>
 
+---
+
+Listeningway is a ReShade addon that listens to system or per-game audio, analyzes it in real time, and publishes the results to anything that wants to react: ReShade shaders as annotation-bound uniforms, generative-art and VJ tools over OSC, and RGB peripherals through OpenRGB. One audio capture, three output channels, all toggleable from the in-game overlay.
+
+> v2.x is in beta. Shader uniform names are committed against breakage. Coming from v1? The v1 uniforms still work; new ones are additive. See [CHANGELOG.md](CHANGELOG.md) for the migration notes.
 
 ---
 
-Listeningway listens to your system's audio, analyzes it live, and exposes data like volume, frequency bands, and beat detection directly to your `.fx` files.
+## Quick start
 
-## For End Users: Get Started!
+You need ReShade 6.3.3 or newer (API 14+) on Windows 10 or 11. AuroraShade R10 is compatible.
 
-Let's add audio reactivity to your existing ReShade presets or try out effects designed for Listeningway! Getting started is super easy:
+1. Download the latest release from [the releases page](https://github.com/gposingway/Listeningway/releases/latest). The ZIP contains `Listeningway.addon`, `Listeningway.fx`, and `ListeningwayUniforms.fxh`.
+2. Drop the files in:
 
-**What You'll Need (The Recipe):**
+   | File                       | Where                                                                                               | Why                                                           |
+   | -------------------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+   | `Listeningway.addon`       | Game folder, next to your ReShade DLL (`dxgi.dll`, `d3d11.dll`, ...). Not inside `reshade-shaders`. | ReShade loads `.addon` files from the same folder as the DLL. |
+   | `Listeningway.fx`          | `reshade-shaders\Shaders\`                                                                          | Reference shader showing all uniforms in use.                 |
+   | `ListeningwayUniforms.fxh` | `reshade-shaders\Shaders\`                                                                          | Header to `#include` from your own shaders.                   |
 
-* **ReShade:** Version 6.3.3 or newer (API 14+). Using older versions (such as 5.2.0) is not supported and may cause crashes. If you are building from source, ensure you use the `v6.3.3` tag of the ReShade repository. AuroraShade R10 (based on ReShade 6.3.3) is also compatible.
-* **Windows:** Version 10 or 11 (required for the WASAPI audio capture magic).
+3. Launch the game and open the ReShade overlay. The **Listeningway** panel appears. Pick a source from the dropdown, then enable `Listeningway.fx` to see it react.
 
-**Installation:**
-
-1.  **Download the Release ZIP:** Head over to the **Latest Release page** on GitHub. Find the main release archive file (usually named something like `Listeningway-vX.Y.Z.zip`) in the 'Assets' section and download it.
-    * [**Go to Latest Listeningway Release**](https://github.com/gposingway/Listeningway/releases/latest)
-2.  **Extract the ZIP:** Unzip the downloaded archive file to a temporary location on your computer using a tool like 7-Zip or Windows Explorer. Inside the extracted folder, you should find files like `Listeningway.addon`, `Listeningway.fx`, and `ListeningwayUniforms.fxh`.
-3.  **Place the Extracted Files:** Now, move these extracted files to their correct final destinations. Use this table as your guide:
-
-    | File Name                  | Where to Place It                                                                | Notes / Purpose                                  |
-    | :------------------------- | :------------------------------------------------------------------------------- | :----------------------------------------------- |
-    | `Listeningway.addon`       | FFXIV Game Directory (Same folder as `ffxiv_dx11.exe` & ReShade DLL `dxgi.dll`) | ReShade loads `.addon` files from this directory. |
-    | `Listeningway.fx`          | Main ReShade Shaders Folder (e.g., `...\reshade-shaders\Shaders\`)               | The example shader effect file.                  |
-    | `ListeningwayUniforms.fxh` | Main ReShade Shaders Folder (e.g., `...\reshade-shaders\Shaders\`)               | Include file needed by shaders using `#include`.   |
-
-    *(**Important Reminder:** The `.addon` file goes directly into your main game folder with the ReShade DLL, **not** inside `reshade-shaders`!)*
-
-4.  **Test Drive**
-    * Launch your game! The addon should load automatically if placed correctly (you might see a message about it in the ReShade log/startup banner).
-    * Open the ReShade menu, find and enable the `Listeningway.fx` effect in your shader list to see it react!
-
-**Tuning (Optional):**
-
-* For most users, the default settings work great! If you want to fine-tune the audio analysis (like how sensitive beat detection is), you can use the built-in overlay UI (accessible through the ReShade menu) or edit the `Listeningway.ini` file located in the same directory as the .addon file. More details on this in the section for developers below.
-* **New in 1.2.0.0:** The overlay UI now features an **Amplifier** slider. This setting multiplies all overlay visualizations and Listeningway_* uniforms (volume, beat, frequency bands, left/right volume) for enhanced visual feedback, but does not affect the underlying audio analysis.
-
-<div align="center">
-
-## Compatible Shader Collections
-
-</div>
-
-These shader collections are specifically designed to work with Listeningway's audio reactivity features:
-
-<table>
-  <tr>
-    <th align="left">Collection</th>
-    <th align="left">Author</th>
-    <th align="left">Description</th>
-    <th align="left">Link</th>
-  </tr>
-  <tr>
-    <td><strong>AS-StageFX</strong></td>
-    <td>Leon Aquitaine</td>
-    <td>A collection of stage/concert-like visual effects that react to music. Includes various light beams, strobes, and atmospheric effects.</td>
-    <td><a href="https://github.com/LeonAquitaine/as-stagefx">GitHub Repository</a></td>
-  </tr>
-</table>
-
-Want to add your shader collection to this list? Create a pull request with your compatible shaders!
+That's the whole setup for shader use. OSC and OpenRGB integrations are off by default; flip them on in the overlay's **Integrations** section when you want them.
 
 ---
 
-## For Shader Creators
+## What it drives
 
-Want to make your *own* effects react to audio? Listeningway makes it quite simple by exposing audio data as `uniform` variables.
+### ReShade shaders
 
-**How to Use the Uniforms:**
-
-You *must* use annotation-based uniforms to access the data. This is robust and avoids potential conflicts. Simply declare a uniform in your shader with the `source` annotation pointing to the Listeningway data you want:
+Include the generated header and read the uniforms you want.
 
 ```hlsl
-// In your .fx file: Define uniforms using the 'source' annotation
+#include "ReShade.fxh"
+#include "ListeningwayUniforms.fxh"
 
-// Example: Get overall volume
-uniform float MyAwesomeVolume < source = "listeningway_volume"; >;
-
-// Example: Get the 32 frequency bands (0=bass -> 31=treble)
-uniform float MyCoolFreqBands[32] < source = "listeningway_freqbands"; >;
-
-// Example: Get the beat trigger (1.0 on beat, fades down)
-uniform float MyFunkyBeat < source = "listeningway_beat"; >;
-
-// Example: Get elapsed time
-uniform float MyTime < source = "listeningway_timeseconds"; >;
-```
-
-**Tip:** For convenience, you can `#include "ListeningwayUniforms.fxh"` (make sure you placed it in `reshade-shaders\Shaders\` as per installation steps) which contains pre-defined declarations for all available Listeningway uniforms.
-
-**Available Uniforms:**
-
-Here's the data Listeningway provides:
-
-<table>
-  <tr>
-    <th align="left">Uniform</th>
-    <th align="left">Description</th>
-    <th align="left">Value Range</th>
-  </tr>
-  <tr>
-    <td><strong>Listeningway_Volume</strong></td>
-    <td>Current overall audio volume (normalized, good for intensity/brightness).</td>
-    <td>0.0 to 1.0</td>
-  </tr>
-  <tr>
-    <td colspan="3"><code>uniform float Listeningway_Volume &lt; source="listeningway_volume"; &gt;;</code><br/><br/></td>
-  </tr>
-  <tr>
-    <td><strong>Listeningway_FreqBands</strong></td>
-    <td>Amplitude of 32 frequency bands (Index 0 = Low Bass ... Index 31 = High Treble). Great for spectrum visualizations or driving different effects based on frequency.</td>
-    <td>0.0 to 1.0 (per band)</td>
-  </tr>
-  <tr>
-    <td colspan="3"><code>uniform float Listeningway_FreqBands[32] &lt; source="listeningway_freqbands"; &gt;;</code><br/><br/></td>
-  </tr>
-  <tr>
-    <td><strong>Listeningway_Beat</strong></td>
-    <td>Beat detection value. Typically pulses to 1.0 on a detected beat and then quickly falls off. Perfect for triggering flashes or movements.</td>
-    <td>0.0 to 1.0</td>
-  </tr>
-  <tr>
-    <td colspan="3"><code>uniform float Listeningway_Beat &lt; source="listeningway_beat"; &gt;;</code><br/><br/></td>
-  </tr>
-  <tr>
-    <td><strong>Listeningway_TimeSeconds</strong></td>
-    <td>Time elapsed (in seconds) since the addon started. Useful for continuous animations.</td>
-    <td>0.0 to ∞</td>
-  </tr>
-  <tr>
-    <td colspan="3"><code>uniform float Listeningway_TimeSeconds &lt; source="listeningway_timeseconds"; &gt;;</code><br/><br/></td>
-  </tr>
-  <tr>
-    <td><strong>Listeningway_TimePhase60Hz</strong></td>
-    <td>Phase (0.0 to 1.0) cycling at 60Hz. Good for smooth, fast oscillations.</td>
-    <td>0.0 to 1.0 (cycling)</td>
-  </tr>
-  <tr>
-    <td colspan="3"><code>uniform float Listeningway_TimePhase60Hz &lt; source="listeningway_timephase60hz"; &gt;;</code><br/><br/></td>
-  </tr>
-  <tr>
-    <td><strong>Listeningway_TimePhase120Hz</strong></td>
-    <td>Phase (0.0 to 1.0) cycling at 120Hz.</td>
-    <td>0.0 to 1.0 (cycling)</td>
-  </tr>
-  <tr>
-    <td colspan="3"><code>uniform float Listeningway_TimePhase120Hz &lt; source="listeningway_timephase120hz"; &gt;;</code><br/><br/></td>
-  </tr>
-  <tr>
-    <td><strong>Listeningway_TotalPhases60Hz</strong></td>
-    <td>Total number of 60Hz cycles elapsed (float).</td>
-    <td>0.0 to ∞</td>
-  </tr>
-  <tr>
-    <td colspan="3"><code>uniform float Listeningway_TotalPhases60Hz &lt; source="listeningway_totalphases60hz"; &gt;;</code><br/><br/></td>
-  </tr>  <tr>
-    <td><strong>Listeningway_TotalPhases120Hz</strong></td>
-    <td>Total number of 120Hz cycles elapsed (float).</td>
-    <td>0.0 to ∞</td>
-  </tr>
-  <tr>
-    <td colspan="3"><code>uniform float Listeningway_TotalPhases120Hz &lt; source="listeningway_totalphases120hz"; &gt;;</code><br/><br/></td>
-  </tr>
-  <tr>
-    <td><strong>Listeningway_VolumeLeft</strong></td>
-    <td>Volume level for left audio channels (0.0 to 1.0).</td>
-    <td>0.0 to 1.0</td>
-  </tr>
-  <tr>
-    <td colspan="3"><code>uniform float Listeningway_VolumeLeft &lt; source="listeningway_volumeleft"; &gt;;</code><br/><br/></td>
-  </tr>
-  <tr>
-    <td><strong>Listeningway_VolumeRight</strong></td>
-    <td>Volume level for right audio channels (0.0 to 1.0).</td>
-    <td>0.0 to 1.0</td>
-  </tr>
-  <tr>
-    <td colspan="3"><code>uniform float Listeningway_VolumeRight &lt; source="listeningway_volumeright"; &gt;;</code><br/><br/></td>
-  </tr>
-  <tr>
-    <td><strong>Listeningway_AudioPan</strong></td>
-    <td>Stereo pan position (-1.0 = full left, 0.0 = center, +1.0 = full right). Enables positional audio effects.</td>
-    <td>-1.0 to +1.0</td>
-  </tr>
-  <tr>
-    <td colspan="3"><code>uniform float Listeningway_AudioPan &lt; source="listeningway_audiopan"; &gt;;</code><br/><br/></td>
-  </tr>
-  <tr>
-    <td><strong>Listeningway_AudioFormat</strong></td>
-    <td>Detected audio format (0.0=none, 1.0=mono, 2.0=stereo, 6.0=5.1 surround, 8.0=7.1 surround). Useful for format-specific effects.</td>
-    <td>0.0, 1.0, 2.0, 6.0, 8.0</td>
-  </tr>
-  <tr>
-    <td colspan="3"><code>uniform float Listeningway_AudioFormat &lt; source="listeningway_audioformat"; &gt;;</code><br/><br/></td>
-  </tr>
-</table>
-
-**Tip:** For convenience, you can `#include "ListeningwayUniforms.fxh"` which contains all these declarations ready to use.
-
-**Example Shader Snippet:**
-
-Here’s a super basic example of using some uniforms in your shader's main pixel shader function:
-
-```hlsl
-// Make sure uniforms are declared above (or use the include)
-
-float4 PS_MyAudioReactiveEffect(float4 pos : SV_Position, float2 uv : TEXCOORD) : SV_Target
+float4 PS_AudioReactive(float4 pos : SV_Position, float2 uv : TEXCOORD) : SV_Target
 {
-    // Enhanced example: Use stereo spatialization for more dynamic effects
-    float bass_intensity = Listeningway_FreqBands[0] * 0.5;  // Bass contribution
-    float overall_volume = Listeningway_Volume * 0.5;        // Overall volume
-    float beat_flash = Listeningway_Beat * 1.0;              // Beat flash effect
-    
-    // NEW: Use stereo information for spatial effects
-    float left_volume = Listeningway_VolumeLeft;
-    float right_volume = Listeningway_VolumeRight;
-    float pan_position = Listeningway_AudioPan; // -1.0 (left) to +1.0 (right)
-    
-    // Create a stereo-aware color effect
-    float3 color = tex2D(ReShade::BackBuffer, uv).rgb;
-    
-    // Apply different colors based on stereo pan
-    if (pan_position < -0.1) {
-        // Left-heavy audio: Blue tint
-        color = lerp(color, float3(0.2, 0.4, 1.0), left_volume * 0.3);
-    } else if (pan_position > 0.1) {
-        // Right-heavy audio: Red tint
-        color = lerp(color, float3(1.0, 0.2, 0.4), right_volume * 0.3);
-    } else {
-        // Centered audio: Green tint
-        color = lerp(color, float3(0.2, 1.0, 0.4), overall_volume * 0.3);
-    }
-    
-    // Add beat flash that respects stereo positioning
-    float beat_contribution = beat_flash * (0.5 + abs(pan_position) * 0.5);
-    color += float3(1.0, 1.0, 1.0) * beat_contribution * 0.2;
+    float bass_pulse = saturate((Listeningway_BassNorm - 0.8) * 2.0);
+    float beat_flash = Listeningway_Beat;
 
-    return float4(saturate(color), 1.0);
+    float3 c = tex2D(ReShade::BackBuffer, uv).rgb;
+    c += float3(1.0, 0.4, 0.1) * bass_pulse * 0.3;
+    c += beat_flash * 0.2;
+    return float4(saturate(c), 1.0);
 }
 
-technique MyAudioReactiveEffect {
-    pass {
-        VertexShader = PostProcessVS;
-        PixelShader = PS_MyAudioReactiveEffect;
-    }
+technique AudioReactive {
+    pass { VertexShader = PostProcessVS; PixelShader = PS_AudioReactive; }
 }
 ```
 
-Now go make something awesome\! ✨
+A few uniforms worth knowing:
 
------
+| Uniform                                                   | What it is                                                              | When you'd reach for it                                                                                                               |
+| --------------------------------------------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `listeningway_volume_norm`                                | AGC-normalized energy. 1.0 = recent average.                            | Replaces per-effect "sensitivity" sliders. Reacts the same way to loud and quiet music.                                               |
+| `listeningway_volume_att`                                 | Smoothed `volume_norm` (asymmetric attack/release)                      | When you want the AGC value but not the jitter.                                                                                       |
+| `listeningway_bass_norm`, `mid_norm`, `treb_norm`         | AGC-normalized macro bands                                              | "Bass kick" or "treble glitter" effects without genre-specific tuning.                                                                |
+| `listeningway_freqbands16`, `freqbands32`                 | Pre-binned spectrum reductions                                          | Fixed-size spectrum for shaders that don't want to depend on `numbands`.                                                              |
+| `listeningway_spectral_centroid`                          | [0, 1] brightness                                                       | Color-temperature shifts; "warm vs bright" mapping.                                                                                   |
+| `listeningway_loudness`                                   | K-weighted (BS.1770) momentary loudness                                 | Perceptually-weighted intensity. Linear, not LUFS log.                                                                                |
+| `listeningway_phase_volume`, `phase_bass`, `phase_treble` | Energy-accumulator phase, [0, 1)                                        | BPM-independent phase: a "loudness counter" that advances faster when the music is louder. Useful where `beat_phase` falls back to 0. |
+| `listeningway_volume_history[64]`                         | Last 64 frames of `volume`, oldest at index 0                           | Waterfall and trail effects without shader-side ring buffers.                                                                         |
+| `listeningway_freqbands_history[N×32]`                    | Per-band history, **band-major**: `[band * 32 + frame]`, frame 0 oldest | Spectrogram-grade material.                                                                                                           |
 
-## For Addon Developers
+The full uniform registry, including stability tier (Stable vs Experimental), lives in [STABILITY.md](STABILITY.md). That document is the public API contract.
 
-<div align="center">
+---
 
-### Building from Source
+## What it integrates with
 
-</div>
+Listeningway can mirror its analysis out to other tools over the wire. Both integrations are off by default and toggle from the overlay's **Integrations** section.
 
-It's streamlined with batch scripts\!
+### OSC (TouchDesigner, Resolume, Max/MSP, vvvv, ...)
 
-1.  **Prepare Dependencies:**
-      * Open a command prompt in the project root.
-      * Run: `.\prepare.bat`
-      * *(This clones the ReShade SDK & vcpkg, installs dependencies via vcpkg - grab a coffee\!)*
-2.  **Build:**
-      * Run: `.\build.bat`
-      * *(This builds in Release mode, renames the DLL to `.addon`, and copies it to `dist\`)*
+Flip the **OSC** toggle. The default destination is `127.0.0.1:9000` (TouchDesigner's default OSC In port). OSC addresses mirror the shader uniforms under a `/listeningway/` prefix; for example `/listeningway/volume`, `/listeningway/freqbands`, `/listeningway/beat`.
 
-<div align="center">
+To verify the stream, run the bundled receiver:
 
-### Configuration Deep Dive
+```
+python samples/osc_receiver.py
+```
 
-</div>
+It listens on `127.0.0.1:9000` and prints every message it sees.
 
-All tunable parameters—such as FFT size, number of bands, smoothing factors, beat detection thresholds, and overlay/visualization options—are stored in `Listeningway.json`, located in the same directory as the ReShade `.addon` file. Changes made through the overlay UI are saved automatically to this file. If you edit the JSON manually, restart your game or ReShade to apply changes. Any missing settings will fall back to sensible defaults.
+Full address schema, settings, integration recipes for popular hosts, and limitations are in **[docs/osc.md](docs/osc.md)**.
 
-**Example `Listeningway.json` (as of June 2025):**
+### OpenRGB (RGB peripherals)
 
-```json
+Install [OpenRGB](https://openrgb.org), enable its SDK server (**Settings → SDK Server → Enable Server**), and flip the **OpenRGB** toggle in the overlay. Default destination `127.0.0.1:6742`.
+
+The default mapping paints all LEDs as a spectrum-driven gradient (bass → blue, treble → red), modulated by AGC volume and beat flash. It's opinionated rather than configurable in v1, so plugging in a new device works out of the box.
+
+Prerequisites, the full mapping math, failure-mode behavior, and limitations are in **[docs/openrgb.md](docs/openrgb.md)**.
+
+---
+
+## Pick an audio source
+
+The overlay has a single **Audio Source** dropdown:
+
+- **System Audio (WASAPI Loopback)** is the default. Captures everything you hear on the default playback device. Works on Windows 10 and 11.
+- **Game Audio Only (Process Loopback)** captures the host process only, so Discord, browsers, and music apps stop bleeding into the visualization. Requires Windows 10 22H2 (build 20348+) or Windows 11; the option is grayed on older builds. Design notes in [ADR-0009](docs/adr/0009-process-audio-source.md).
+- **None (Off)** disables analysis completely.
+
+You can change the source at any time from the overlay.
+
+---
+
+## Configure
+
+The overlay is the primary UI. Each section has a Settings disclosure on the right; engineer-only knobs hide behind an Advanced sub-disclosure inside it. Save with the **Save** button at the bottom; settings persist to `Listeningway.json` next to the addon. Editing the JSON by hand is fine; restart the game to apply.
+
+Trimmed `Listeningway.json` example:
+
+```jsonc
 {
+  "schema_version": 1,
   "audio": {
-    "analysisEnabled": true,
-    "captureProviderCode": "system",
-    "panSmoothing": 0.0
-  },
-  "beat": {
-    "algorithm": 1,
-    "falloffDefault": 2.0,
-    "timeScale": 0.000000001,
-    "timeInitial": 0.5,
-    "timeMin": 0.05,
-    "timeDivisor": 0.1,
-    "spectralFluxThreshold": 0.05,
-    "spectralFluxDecayMultiplier": 2.0,
-    "tempoChangeThreshold": 0.25,
-    "beatInductionWindow": 0.10,
-    "octaveErrorWeight": 0.60,
-    "minFreq": 0.0,
-    "maxFreq": 400.0,
-    "fluxLowAlpha": 0.35,
-    "fluxLowThresholdMultiplier": 2.0
+    "analysis_enabled": true,
+    "capture_source_code": "system", // "system" | "process" | "off"
+    "pan_smoothing": 0.1,
   },
   "frequency": {
-    "logScaleEnabled": true,
-    "logStrength": 0.5,
-    "minFreq": 80.0,
-    "maxFreq": 13000.0,
-    "equalizerBands": [1.0, 1.5, 2.0, 2.5, 3.0],
-    "equalizerWidth": 1.5,
-    "amplifier": 1.0,
-    "bands": 32,
-    "fftSize": 512,
-    "bandNorm": 0.1
+    "band_count": 64,
+    "fft_size": 2048,
+    "band_scale": "Mel", // "Linear" | "Log" | "Mel"
+    "log_strength": 0.1,
+    "min_freq": 30.0,
+    "max_freq": 22050.0,
+    "equalizer_bands": [1.11, 1.29, 2.11, 1.8, 1.63],
   },
-  "debug": {
-    "debugEnabled": false,
-    "overlayEnabled": true
-  }
-}
-```
-
-**Overlay UI:**
-
-The overlay UI (open via the ReShade menu) allows real-time adjustment of all major settings, including:
-- Volume normalization, band normalization, pan smoothing, and more
-
-All changes made in the overlay UI are saved back to `Listeningway.json` atomically.
-
-**Band-Limited Beat Detection:**
-
-Listeningway features band-limited spectral flux detection for more accurate beat detection, especially in music with strong bass beats like electronic, hip-hop, and rock. This feature focuses the beat detection on low frequencies (by default 0-400Hz) where kick drums and bass hits typically occur, making it less sensitive to other sounds like vocals, synths, or high-frequency percussion.
-
-You can fine-tune this feature through the overlay UI (available in the ReShade menu) or directly through these settings in `Listeningway.json`:
-
-```json
-{
   "beat": {
-    "minFreq": 0.0,
-    "maxFreq": 400.0,
-    "fluxLowAlpha": 0.35,
-    "fluxLowThresholdMultiplier": 2.0
-  }
+    "pulse_strength": 1.0, // single user-facing knob; 0..3
+  },
+  "agc": { "window_seconds": 5.0, "clamp_max": 4.0 },
+  "loudness": { "window_ms": 400.0 },
+  "network": {
+    "osc": {
+      "enabled": false,
+      "host": "127.0.0.1",
+      "port": 9000,
+      "rate_hz": 60,
+    },
+    "openrgb": {
+      "enabled": false,
+      "host": "127.0.0.1",
+      "port": 6742,
+      "rate_hz": 30,
+    },
+  },
 }
 ```
 
-**Tuning Tips (JSON & Overlay UI):**
+V1 configurations are not migrated; v2 writes a fresh file with v2 defaults on first run.
 
-You can fine-tune Listeningway's audio reactivity for your needs using the overlay UI (in the ReShade menu) or by editing `Listeningway.json` directly. All field names below match the JSON config and overlay UI labels.
+---
 
-**Beat Detection**
-- `beat.minFreq` / `beat.maxFreq`: Restrict beat detection to a frequency range. Lower values (e.g. 20–150 Hz) focus on bass/kick drums. Defaults (0–400 Hz) work for most music. For acoustic, try 40–250 Hz.
-- `beat.fluxLowThresholdMultiplier`: Lower (1.1–1.3) = more sensitive, higher (1.5–2.0) = more selective (fewer false positives).
-- `beat.fluxLowAlpha`: Lower = slower adaptation to volume changes (smoother, less jitter), higher = more responsive.
-- `beat.algorithm`: 0 = Simple Energy (good for strong, simple beats), 1 = Spectral Flux + Autocorrelation (better for complex rhythms).
-- Advanced: `beat.spectralFluxThreshold`, `beat.spectralFluxDecayMultiplier`, `beat.tempoChangeThreshold`, `beat.beatInductionWindow`, `beat.octaveErrorWeight`—tune only if you want to experiment with advanced beat detection.
+## Compatible shader collections
 
-**Frequency Bands**
-- `frequency.logScaleEnabled`: `true` (default) matches human hearing; `false` for linear mapping.
-- `frequency.minFreq` / `frequency.maxFreq`: Set the frequency range for band analysis. Lower min or higher max makes bands more/less sensitive to certain content.
-- `frequency.logStrength`: Higher = more detail in bass bands.
-- `frequency.bands`: Number of bands (e.g. 32). Must match your shader's uniform array size.
-- `frequency.fftSize`: FFT window size (e.g. 512). Higher = more frequency detail, but slower response.
+| Collection     | Author         | Description                                                                                                             |
+| -------------- | -------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| **AS-StageFX** | Leon Aquitaine | Stage and concert visual effects: light beams, strobes, atmosphere. [Repo](https://github.com/LeonAquitaine/as-stagefx) |
 
-**Amplifier**
-- `frequency.amplifier`: Multiplies all overlay visualizations and Listeningway_* uniforms (volume, beat, bands, left/right volume). Use if your system/game is quiet or you want more visual punch. Does not affect underlying analysis.
+If you maintain a shader pack that consumes Listeningway uniforms, send a pull request to add it.
 
-**Pan Smoothing**
-- `audio.panSmoothing`: 0.0 = no smoothing (fast, but jittery), 0.1–0.3 = light smoothing, 0.4–0.7 = medium, 0.8–1.0 = heavy smoothing (very stable, but slow to react).
+---
 
-**User Panning Adjustment**
-- `audio.panOffset`: User panning adjustment, range -1.0 (full left) to +1.0 (full right), default 0.0. This value is added to the detected pan before smoothing/output. Use to compensate for system or room bias.
+## Hacking on Listeningway
 
-**5-Band Equalizer**
-- `frequency.equalizerBands`: Array of 5 multipliers for low to high frequencies (e.g. `[1.0, 1.5, 2.0, 2.5, 3.0]`). Boost or cut specific ranges for more visible bass, mids, or treble.
-- `frequency.equalizerWidth`: Controls how wide each band's effect is (in octaves). Higher = smoother transitions, lower = more focused boosts.
+If you want to add a new audio source, DSP stage, output consumer, or shader uniform, start with [CONTRIBUTING.md](CONTRIBUTING.md) for the source layout, build, and code style. Architectural rationale lives in [`docs/adr/`](docs/adr/); read in numerical order if you're touching anything cross-cutting. The five-layer pipeline (Source → Ring → DSP → Snapshot → Consumers) is in [ADR-0002](docs/adr/0002-pipeline-architecture.md); the adapter usage policy in [ADR-0003](docs/adr/0003-adapter-usage-policy.md); the configuration system in [ADR-0004](docs/adr/0004-configuration-strategy.md); the `IOutputConsumer` abstraction in [ADR-0010](docs/adr/0010-network-outputs.md).
 
-**Workflow Tips**
-- Use the overlay UI for real-time feedback and tuning. All changes are saved to `Listeningway.json` automatically.
-- If you edit the JSON manually, restart your game or ReShade to apply changes.
-- Any missing settings in the JSON will fall back to sensible defaults.
+---
 
-For most users, the defaults work well! Tweak only if you want to optimize for a specific genre, visualization style, or hardware setup.
+## Credits
 
-**Frequency Analysis Improvements:**
-- FFT processing now uses a Hann window function to reduce spectral leakage, resulting in cleaner frequency analysis and more accurate beat detection.
+The wire-layer libraries for the OSC and OpenRGB consumers are vendored under [`third_party/`](third_party/) with their licenses and full attribution. They're the reason those integrations exist:
 
-**Architecture Overview:**
+- **OSC**: [`mhroth/tinyosc`](https://github.com/mhroth/tinyosc) by **Martin Roth**, ISC-licensed. Two-file C99 OSC encoder; Listeningway uses the encoder side and brings its own Winsock plumbing. Detail in [`third_party/tinyosc/ATTRIBUTION.md`](third_party/tinyosc/ATTRIBUTION.md).
+- **OpenRGB**: [`Youda008/OpenRGB-cppSDK`](https://github.com/Youda008/OpenRGB-cppSDK) by **Jan Broz**, MIT-licensed. The serious C++ client for the OpenRGB protocol; handles protocol-version negotiation correctly so Listeningway doesn't have to. Builds on Youda008's [`CppUtils-Essential`](https://github.com/Youda008/CppUtils-Essential) and [`CppUtils-Network`](https://github.com/Youda008/CppUtils-Network) libraries (also MIT). Detail in [`third_party/Youda008-OpenRGB-cppSDK/ATTRIBUTION.md`](third_party/Youda008-OpenRGB-cppSDK/ATTRIBUTION.md).
 
-  * `audio_capture.*`: Handles WASAPI audio capture thread.
-  * `audio_analysis.*`: Performs FFT, calculates volume, bands, beat detection.
-  * `uniform_manager.*`: Manages updating shader uniforms via the ReShade API.
-  * `overlay.*`: Renders the ImGui debug overlay.
-  * `logging.*`: Simple thread-safe logging.
-  * `listeningway_addon.cpp`: Main addon entry point, event handling, initialization.
-  * `settings.*`: Loads/saves settings from `.json`, holds the `ListeningwaySettings` struct.
+The rest of the dependency stack:
 
-**Dependencies & Credits:**
+| Library / API                                                                                  | Author             | Purpose                |
+| ---------------------------------------------------------------------------------------------- | ------------------ | ---------------------- |
+| [ReShade](https://github.com/crosire/reshade)                                                  | crosire            | Core framework and SDK |
+| [Dear ImGui](https://github.com/ocornut/imgui)                                                 | Omar Cornut        | Overlay GUI            |
+| [KissFFT](https://github.com/mborgerding/kissfft)                                              | Mark Borgerding    | FFT engine             |
+| [nlohmann/json](https://github.com/nlohmann/json)                                              | Niels Lohmann      | JSON marshalling       |
+| [readerwriterqueue](https://github.com/cameron314/readerwriterqueue)                           | Cameron Desrochers | Lock-free SPSC ring    |
+| [GoogleTest](https://github.com/google/googletest)                                             | Google             | Unit tests             |
+| [rapidcheck](https://github.com/emil-e/rapidcheck)                                             | Emil Eriksson      | Property tests         |
+| [Microsoft WASAPI](https://docs.microsoft.com/en-us/windows/win32/coreaudio/wasapi/wasapi-api) | Microsoft          | Windows audio capture  |
 
-| Library / API                                                                                  | Author / Project   | Purpose                              |
-| :--------------------------------------------------------------------------------------------- | :----------------- | :----------------------------------- |
-| [ReShade](https://github.com/crosire/reshade)                                                  | crosire            | Core framework & SDK                 |
-| [ImGui](https://github.com/ocornut/imgui)                                                      | Omar Cornut        | Debug Overlay GUI                    |
-| [KissFFT](https://github.com/mborgerding/kissfft)                                              | Mark Borgerding    | Fast Fourier Transform Calculation |
-| [Microsoft WASAPI](https://www.google.com/search?q=https://docs.microsoft.com/en-us/windows/win32/coreaudio/wasapi/wasapi-api) | Microsoft          | Windows Audio Capture                |
+All linked statically. No extra DLLs ship beside the `.addon`.
 
-**Developer Notes:**
+---
 
-  * All dependencies (like KissFFT) are linked statically; no extra DLLs needed beside the `.addon` file.
-  * Check the ReShade log file (`ReShade.log` or `d3d11.log` etc. in game dir) for any addon errors.
-  * If you change the number of frequency bands (`NumBands` in `.json`), you MUST update it in `settings.h` (`DEFAULT_NUM_BANDS`) AND adjust your shader code (array sizes, uniform source annotations if needed) accordingly\! Same applies if adding new uniforms.
-  * Doxygen documentation can be generated using the `Doxyfile` in `third_party/reshade`.
+## Feedback
 
-  HUGE thanks to the ReShade community and the creators of these libraries\!
-
------
-
-<div align="center">
-
-## Feedback & Show Us What You Make!
-
-</div>
-
-Feedback, ideas, bug reports, and pull requests are very welcome over on the [GitHub Repository](https://github.com/gposingway/Listeningway)!
-
-And most importantly – if you use Listeningway to create some cool audio-reactive shaders, **please share them!** Post screenshots or videos on GitHub Discussions, Discord, or wherever you hang out! We'd love to see your creativity in action!
-
-<div align="center">
-
-**Hope you have a blast making your visuals groove!**
-
-Happy visualizing! =)
-
-</div>
+Bug reports, ideas, and pull requests are welcome on [GitHub](https://github.com/gposingway/Listeningway). If you make something with it, share it.

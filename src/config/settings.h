@@ -1,0 +1,219 @@
+// ---------------------------------------------
+// Settings — the v2 configuration value type (ADR-0004)
+//
+// One struct, organized into sub-structs by concern, marshalled to/from
+// JSON via nlohmann's intrusive macros. The Store class (settings_store.h)
+// handles persistence and version-counter publication.
+// ---------------------------------------------
+#pragma once
+
+#include <array>
+#include <cstdint>
+#include <string>
+
+namespace lw::config {
+
+/// Schema version. Bumped when on-disk schema changes; old loaders dispatch
+/// by version. v1 ships with version 1; v2 is a clean break (ADR-0001), so
+/// v1 configs are not migrated.
+inline constexpr int kCurrentSchemaVersion = 1;
+
+/// Audio capture-related tunables.
+struct AudioConfig {
+    bool        analysis_enabled    = true;
+    std::string capture_source_code = "system";  // matches IAudioSource::Info::code
+    bool        simd_enabled        = true;       ///< SSE/AVX in DSP stages
+
+    // Pan stage tunables
+    float pan_smoothing = 0.1f;   ///< 0 = none, 1 = max smoothing
+    float pan_offset    = 0.0f;   ///< user pan bias, [-1, +1]
+};
+
+/// Beat / tempo detection tunables.
+///
+/// Three modes, drawn from the convergent UX of pro audio tools (Logic
+/// Smart Tempo, iZotope Master Assistant, LANDR mastering, Ableton
+/// Warp): an automatic mode that observes the audio and tunes itself,
+/// a small set of named pre-cooked profiles, and a custom mode for
+/// users who want direct control. Profile names follow Ableton's
+/// "name by signal character, not genre" convention so they don't age
+/// badly.
+struct BeatConfig {
+    enum class Mode {
+        Auto,     ///< system observes onset rate and adapts pulse strength
+        Profile,  ///< user picks a named signal-character preset
+        Custom,   ///< user controls pulse strength directly
+    };
+    enum class Profile {
+        Percussive,  ///< drums / EDM / hip-hop — bass-weighted, tight decay
+        Melodic,     ///< vocal / rock / jazz / classical — balanced bands
+        Sustained,   ///< ambient / cinematic / sparse — sensitive, long decay
+    };
+
+    Mode    mode    = Mode::Auto;
+    Profile profile = Profile::Percussive;
+
+    /// Used directly in Custom mode; in Auto/Profile modes the BeatStage
+    /// computes its own working value internally. The UI seeds this from
+    /// the snapshot's auto_pulse_strength when the user switches into
+    /// Custom mode, so the slider lands on Auto's converged value rather
+    /// than jumping back to the default.
+    float pulse_strength = 1.0f;
+};
+
+/// Frequency-domain tunables.
+struct FrequencyConfig {
+    int    band_count    = 64;        ///< runtime; ≤ kMaxBands
+    int    fft_size      = 2048;      ///< must be power of two
+    enum class BandScale { Linear, Log, Mel };
+    BandScale band_scale = BandScale::Mel;  ///< Slaney mel by default
+    float  log_strength  = 0.10f;     ///< log-boost stage gain curve
+    float  band_norm     = 0.10f;     ///< raw-magnitude → band amplitude scaling
+    float  min_freq      = 30.0f;     ///< band coverage lower bound
+    float  max_freq      = 22050.0f;  ///< band coverage upper bound
+
+    // 5-band equalizer (Bass / LowMid / Mid / HighMid / Treble),
+    // applied as Gaussian-weighted contributions per band index.
+    std::array<float, 5> equalizer_bands { 1.11f, 1.29f, 2.11f, 1.80f, 1.63f };
+    float equalizer_width = 0.15f;
+
+    // Per-uniform amplifiers (visual-only, do not affect analysis).
+    float amplifier_volume    = 1.0f;
+    float amplifier_bands     = 1.0f;
+    float amplifier_direction = 1.0f;
+
+    // Directional stage tunables. spatial_spread controls how much each
+    // channel's energy bleeds into its two neighbouring direction buckets
+    // (0 = sharp peaks per channel, 0.5 = soft glow). spatial_smoothing is
+    // a per-frame EMA on the direction8 vector to calm flicker on
+    // percussive content (0 = no smoothing, → 1 = heavily smoothed).
+    float spatial_spread    = 0.25f;
+    float spatial_smoothing = 0.10f;
+};
+
+/// AGC normalization (running-mean ratios).
+struct AgcConfig {
+    float window_seconds = 5.0f;   ///< exponential-moving-mean window
+    float clamp_max      = 4.0f;   ///< cap on the normalized value
+    float att_attack_ms  = 50.0f;  ///< for the *_att smoothed siblings
+    float att_release_ms = 200.0f;
+};
+
+/// Chronotensity phase accumulator (accumulates per-band energy modulo 1.0).
+struct ChronotensityConfig {
+    float gain_volume = 0.5f;  // accumulator rate per "average" energy
+    float gain_bass   = 0.5f;
+    float gain_treble = 0.5f;
+};
+
+/// K-weighted loudness (BS.1770) tunables.
+struct LoudnessConfig {
+    float window_ms = 400.0f;  ///< momentary integration window
+};
+
+/// Debug toggles.
+struct DebugConfig {
+    bool debug_logging   = false;
+    bool overlay_enabled = false;
+};
+
+/// Overlay/UI viewing preferences. Visual-only; doesn't affect analysis or
+/// any uniform output.
+struct UiConfig {
+    enum class SpectrumOrientation { Vertical, Horizontal };
+    SpectrumOrientation spectrum_orientation = SpectrumOrientation::Horizontal;
+};
+
+/// OSC sender (Open Sound Control). Off by default; on enable, sends
+/// messages mirroring the shader uniform names ("/listeningway/volume",
+/// "/listeningway/freqbands", ...) to host:port at rate_hz.
+/// Send-only — no port is opened on this machine.
+struct OscConfig {
+    bool        enabled = false;
+    std::string host    = "127.0.0.1";
+    int         port    = 9000;        ///< TouchDesigner default
+    int         rate_hz = 60;          ///< clamp 1..120
+};
+
+/// OpenRGB client. Off by default; on enable, connects as a TCP client to
+/// an OpenRGB server (typically running on the local machine), enumerates
+/// controllers, and pushes per-LED frames at rate_hz. Listening port is
+/// NOT opened on this machine — we are the client.
+///
+/// Pattern dispatch is per zone-type (Single / Linear / Matrix) — see
+/// ADR-0014 for the catalogue, defaults, and rationale. Each connected
+/// zone's LEDs render under the pattern picked for its zone type; one
+/// dropdown per type covers any number of devices.
+struct OpenRgbConfig {
+    /// Patterns for single-LED zones (GPU accents, AIO pumps, single-LED
+    /// mice). Ordered active → soothing.
+    enum class SinglePattern {
+        BeatFlash,           ///< fixed colour, brightness pulses on each beat
+        VolumePulse,         ///< fixed colour, brightness rises/falls with volume_att
+        SpectralHue,         ///< hue from spectral_centroid, brightness from volume_att
+        ChronotensityCycle,  ///< hue rotates at phase_volume rate
+        Static,              ///< fixed colour, no reaction
+        Off,                 ///< black
+    };
+
+    /// Patterns for 1D-strip zones (RAM, case strips, fan rings, motherboard
+    /// accents, ARGB headers). Ordered active → soothing.
+    enum class LinearPattern {
+        SpectrumBar,      ///< freq across length, amplitude → brightness
+        VuMeter,          ///< volume_norm fills from one end, peak-hold dot
+        ChaseOrbit,       ///< phase_volume drives a moving "comet"
+        PulseFromCenter,  ///< bass + beat ripple outward symmetrically
+        StereoSplit,      ///< L half = volume_left, R half = volume_right
+        ColorWash,        ///< solid; hue from centroid, brightness from volume_att
+        Static,
+        Off,
+    };
+
+    /// Patterns for 2D-grid zones (keyboards, mouse pads). Ordered active
+    /// → soothing.
+    enum class MatrixPattern {
+        SpatialMap,            ///< direction8 projected onto matrix XY
+        EqualizerColumns,      ///< N freq bands as vertical bars across columns
+        PerRegion,             ///< bass→alphas, mid→numrow, treb→F-row, beat→spacebar
+        SpectrogramWaterfall,  ///< time scrolls down rows, freq across columns
+        BeatFlash,             ///< entire matrix pulses on a base colour
+        ColorWash,             ///< solid; hue from centroid
+        Static,
+        Off,
+    };
+
+    bool        enabled    = false;
+    std::string host       = "127.0.0.1";
+    int         port       = 6742;     ///< OpenRGB server default
+    int         rate_hz    = 30;       ///< clamp 5..60 (server has wake-up issues above 60)
+    float       brightness = 1.0f;     ///< 0..1 global multiplier
+
+    SinglePattern pattern_single = SinglePattern::SpectralHue;
+    LinearPattern pattern_linear = LinearPattern::SpectrumBar;
+    MatrixPattern pattern_matrix = MatrixPattern::PerRegion;
+};
+
+/// Network outputs umbrella.
+struct NetworkConfig {
+    OscConfig     osc;
+    OpenRgbConfig openrgb;
+};
+
+/// Top-level settings POD. Every persisted tunable lives here. Runtime state
+/// (sample rate detected at capture, current beat detector state, etc.) does
+/// NOT live here.
+struct Settings {
+    int schema_version = kCurrentSchemaVersion;
+
+    AudioConfig         audio;
+    BeatConfig          beat;
+    FrequencyConfig     frequency;
+    AgcConfig           agc;
+    ChronotensityConfig chronotensity;
+    LoudnessConfig      loudness;
+    DebugConfig         debug;
+    NetworkConfig       network;
+    UiConfig            ui;
+};
+
+}  // namespace lw::config
