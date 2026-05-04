@@ -179,6 +179,19 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     Mmdevapi
     Ws2_32
 )
+# option(RESHADE_LOCALIZATION "Enable ReShade-style localization resource compilation" ON)
+
+# # Localization resource files (.rc2) – MSVC-only, gated by RESHADE_LOCALIZATION
+# if(MSVC AND RESHADE_LOCALIZATION)
+#     add_definitions(RESHADE_LOCALIZATION)
+#     file(GLOB LOCALE_RC_FILES ${CMAKE_SOURCE_DIR}/res/lang_*.rc2)
+#     if(LOCALE_RC_FILES)
+#         target_sources(${PROJECT_NAME} PRIVATE ${LOCALE_RC_FILES})
+#         set_source_files_properties(${LOCALE_RC_FILES} PROPERTIES
+#             LANGUAGE RC
+#         )
+#     endif()
+# endif()
 
 if(MSVC)
     target_compile_options(${PROJECT_NAME} PRIVATE
