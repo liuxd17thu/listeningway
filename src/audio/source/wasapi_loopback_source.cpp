@@ -126,7 +126,7 @@ WasapiLoopbackSource::~WasapiLoopbackSource() {
 Info WasapiLoopbackSource::info() const {
     return {
         .code = "system",
-        .display = "System Audio (WASAPI Loopback)",
+        .display = "系统音频（WASAPI回环）",
         .is_default = true,
         .order = 0,
         .activates_capture = true,

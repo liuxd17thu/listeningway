@@ -160,14 +160,14 @@ void OscConsumer::stop() {
 
 std::string OscConsumer::status_line() const {
     std::lock_guard<std::mutex> g(status_mutex_);
-    if (!running_.load()) return "off";
+    if (!running_.load()) return "关";
 
     char buf[256];
     if (!last_error_.empty()) {
         std::snprintf(buf, sizeof(buf), "%s @ %d Hz — error: %s",
                        current_dest_.c_str(), current_rate_hz_, last_error_.c_str());
     } else {
-        std::snprintf(buf, sizeof(buf), "%s @ %d Hz — %llu packets sent",
+        std::snprintf(buf, sizeof(buf), "%s @ %d Hz — %llu 发送",
                        current_dest_.c_str(), current_rate_hz_,
                        static_cast<unsigned long long>(packets_sent_.load()));
     }

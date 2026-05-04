@@ -198,7 +198,7 @@ ProcessAudioSource::~ProcessAudioSource() {
 Info ProcessAudioSource::info() const {
     return {
         .code = "process",
-        .display = "Game Audio Only (Process Loopback)",
+        .display = "仅游戏音频（进程回环）",
         .is_default = false,
         .order = 1,
         .activates_capture = true,

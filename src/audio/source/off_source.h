@@ -12,7 +12,7 @@ public:
     Info info() const override {
         return {
             .code = "off",
-            .display = "None (Audio Analysis Off)",
+            .display = "无（音频分析关）",
             .is_default = false,
             .order = 100,
             .activates_capture = false,

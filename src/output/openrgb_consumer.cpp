@@ -96,16 +96,16 @@ void OpenRgbConsumer::stop() {
 
 std::string OpenRgbConsumer::status_line() const {
     std::lock_guard<std::mutex> g(status_mutex_);
-    if (!running_.load()) return "off";
+    if (!running_.load()) return "关";
 
     char buf[256];
     if (!last_error_.empty()) {
-        std::snprintf(buf, sizeof(buf), "%s — error: %s",
+        std::snprintf(buf, sizeof(buf), "%s — 错误: %s",
                        current_dest_.c_str(), last_error_.c_str());
     } else if (!connected_) {
-        std::snprintf(buf, sizeof(buf), "%s — connecting...", current_dest_.c_str());
+        std::snprintf(buf, sizeof(buf), "%s — 连接中...", current_dest_.c_str());
     } else {
-        std::snprintf(buf, sizeof(buf), "%s @ %d Hz — %d devices, %llu frames",
+        std::snprintf(buf, sizeof(buf), "%s @ %d Hz — %d 设备, %llu 帧",
                        current_dest_.c_str(), current_rate_hz_,
                        device_count_.load(),
                        static_cast<unsigned long long>(frames_sent_.load()));

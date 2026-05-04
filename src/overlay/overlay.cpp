@@ -67,10 +67,10 @@ void compute_columns() {
     // Picked the widest label currently in use across all sections so the
     // bar-start column accommodates everything without clipping.
     const char* probes[] = {
-        "Threshold window (ms)",
-        "Smoothing release (ms)",
-        "Beat position",
-        "Brightness",
+        "阈值窗口 (ms)",
+        "平滑释放 (ms)",
+        "节拍位置",
+        "亮度",
     };
     float widest = 0.0f;
     for (const char* p : probes) widest = std::max(widest, ImGui::CalcTextSize(p).x);
@@ -250,7 +250,7 @@ bool subtle_settings_toggle(bool& open) {
     // plain ASCII '*' for the filled (open) state.
     //   Closed: "settings ·"
     //   Open:   "settings *"
-    const char* label = open ? "settings *" : "settings \xC2\xB7";
+    const char* label = open ? "设置 *" : "设置 \xC2\xB7";
 
     const float w = ImGui::CalcTextSize(label).x
                   + ImGui::GetStyle().FramePadding.x * 2.0f;
@@ -362,13 +362,14 @@ bool integration_row(const char* name, bool& enabled, bool& dirty,
     }
     if (enabled) ImGui::PopStyleColor(3);
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Click to %s.", enabled ? "disable" : "enable");
+        // ImGui::SetTooltip("Click to %s.", enabled ? "disable" : "enable");
+        ImGui::SetTooltip(enabled ? "点击以禁用" : "点击以启用");
     }
 
     ImGui::SameLine();
     ImGui::AlignTextToFramePadding();
     if (status.empty()) {
-        ImGui::TextDisabled("Off");
+        ImGui::TextDisabled("关");
     } else {
         // Use std::string for null-terminated TextDisabled().
         const std::string s(status);
@@ -390,23 +391,23 @@ bool integration_row(const char* name, bool& enabled, bool& dirty,
 
 const char* state_label(State s) {
     switch (s) {
-        case State::Off:      return "Off";
-        case State::Starting: return "Starting";
-        case State::Running:  return "Running";
-        case State::Stopping: return "Stopping";
-        case State::Error:    return "Error";
+        case State::Off:      return "关";
+        case State::Starting: return "启动";
+        case State::Running:  return "运行";
+        case State::Stopping: return "停止";
+        case State::Error:    return "错误";
     }
     return "?";
 }
 
 const char* format_label(int channels) {
     switch (channels) {
-        case 0:  return "None";
-        case 1:  return "Mono";
-        case 2:  return "Stereo";
+        case 0:  return "无";
+        case 1:  return "单声道";
+        case 2:  return "立体声";
         case 6:  return "5.1";
         case 8:  return "7.1";
-        default: return "Multi";
+        default: return "多重";
     }
 }
 
@@ -653,7 +654,7 @@ const char* current_source_label(AudioSystem& system, const config::Settings& cf
 static void section_audio_source(AudioSystem& system, config::Settings& cfg, bool&) {
     ImGui::Spacing();
     ImGui::AlignTextToFramePadding();
-    ImGui::TextUnformatted("Audio Source");
+    ImGui::TextUnformatted("音频源");
     ImGui::SameLine();
 
     const auto sources = system.available_sources();
@@ -673,10 +674,10 @@ static void section_audio_source(AudioSystem& system, config::Settings& cfg, boo
         system.switch_source(sources[sel].code);
     }
     ImGui::PopItemWidth();
-    tip("Where Listeningway listens.\n"
-        "  - System Audio: everything the speakers play.\n"
-        "  - Game Audio Only: just this game (Win10 22H2+).\n"
-        "  - None: turn analysis off.");
+    tip("聆听威要听哪里？\n"
+        "  - 系统音频：扬声器播放的任何内容\n"
+        "  - 游戏音频：只是游戏本身（仅限Windows 10 22H2以上）\n"
+        "  - 无：关掉音频分析");
 
     ImGui::Separator();
 }
@@ -686,37 +687,37 @@ static void section_audio_source(AudioSystem& system, config::Settings& cfg, boo
 static void section_levels(const AudioSnapshot& snap, config::Settings& cfg, bool& dirty) {
     using namespace overlay_style;
     const char* fmt_label = format_label(static_cast<int>(snap.audio_format));
-    const bool show = section_header_with_settings("Levels", fmt_label, "levels");
+    const bool show = section_header_with_settings("电平", fmt_label, "levels");
 
     const float vol_amp = cfg.frequency.amplifier_volume;
     const ImU32 fill = ImGui::GetColorU32(ImGuiCol_PlotHistogram);
 
     {
         TightRowSpacing tight;
-        meter_row("Volume", std::clamp(snap.volume * vol_amp, 0.0f, 1.0f), fill);
+        meter_row("音量", std::clamp(snap.volume * vol_amp, 0.0f, 1.0f), fill);
     }
 
-    subgroup_label("Stereo:");
+    subgroup_label("立体声:");
     ImGui::Indent(kSubGroupIndent);
     {
         TightRowSpacing tight;
-        meter_row("Left",  std::clamp(snap.volume_left  * vol_amp, 0.0f, 1.0f), fill);
-        meter_row("Right", std::clamp(snap.volume_right * vol_amp, 0.0f, 1.0f), fill);
-        center_meter_row("Pan", snap.audio_pan);
+        meter_row("左",  std::clamp(snap.volume_left  * vol_amp, 0.0f, 1.0f), fill);
+        meter_row("右", std::clamp(snap.volume_right * vol_amp, 0.0f, 1.0f), fill);
+        center_meter_row("声像", snap.audio_pan);
     }
     ImGui::Unindent(kSubGroupIndent);
 
     if (show) {
         ImGui::Indent(kSubGroupIndent);
-        if (slider_row("Volume Boost", &cfg.frequency.amplifier_volume, 1.0f, 11.0f, "%.2f"))
+        if (slider_row("音量提升", &cfg.frequency.amplifier_volume, 1.0f, 11.0f, "%.2f"))
             dirty = true;
-        tip("Visual-only multiplier on the volume readouts and the listeningway_volume uniform. Doesn't change beat detection or analysis.\nTechnical: frequency.amplifier_volume, [1, 11]");
-        if (slider_row("Pan Smoothing", &cfg.audio.pan_smoothing, 0.0f, 1.0f, "%.2f"))
+        tip("放大读出的音量值和相应的 listeningway_volume参数，不影响节拍检测和分析。\n实现: frequency.amplifier_volume, [1, 11]");
+        if (slider_row("声像平滑", &cfg.audio.pan_smoothing, 0.0f, 1.0f, "%.2f"))
             dirty = true;
-        tip("Smooths out pan jitter. 0 = instant response, 1 = very slow.\nTechnical: audio.pan_smoothing, [0, 1]");
-        if (slider_row("Pan Offset", &cfg.audio.pan_offset, -1.0f, 1.0f, "%.2f"))
+        tip("平滑声像抖动。0 = 立刻响应，1 = 很慢的响应。\n实现: audio.pan_smoothing, [0, 1]");
+        if (slider_row("声像偏移", &cfg.audio.pan_offset, -1.0f, 1.0f, "%.2f"))
             dirty = true;
-        tip("Shifts the perceived stereo center. Useful if your room/headphones are biased.\nTechnical: audio.pan_offset, [-1, +1]");
+        tip("移动感知立体声中心，适用于环境/耳机不平衡的情况。\n实现: audio.pan_offset, [-1, +1]");
         ImGui::Unindent(kSubGroupIndent);
     }
 }
@@ -739,21 +740,21 @@ static void section_beat(const AudioSnapshot& snap, config::Settings& cfg, bool&
     if (snap.tempo_detected) {
         std::snprintf(hint, sizeof(hint), "%.0f BPM", snap.tempo_bpm);
     } else {
-        std::snprintf(hint, sizeof(hint), "searching...");
+        std::snprintf(hint, sizeof(hint), "搜索中...");
     }
-    const bool show = section_header_with_settings("Beat Detection", hint, "beat");
+    const bool show = section_header_with_settings("节拍检测", hint, "beat");
 
     const ImU32 fill = ImGui::GetColorU32(ImGuiCol_PlotHistogram);
 
     {
         TightRowSpacing tight;
-        meter_row("Pulse", std::clamp(snap.beat, 0.0f, 1.0f), fill);
+        meter_row("脉冲", std::clamp(snap.beat, 0.0f, 1.0f), fill);
         if (snap.tempo_detected) {
-            info_row("Tempo", "%.1f BPM (%.0f%% confidence)",
+            info_row("节拍", "%.1f BPM (%.0f%% 置信度)",
                      snap.tempo_bpm, snap.tempo_confidence * 100.0f);
         } else {
-            label_left("Tempo");
-            ImGui::TextDisabled("searching... (%.0f%% confidence)",
+            label_left("节拍");
+            ImGui::TextDisabled("搜索中... (%.0f%% 置信度)",
                                 snap.tempo_confidence * 100.0f);
         }
     }
@@ -761,11 +762,11 @@ static void section_beat(const AudioSnapshot& snap, config::Settings& cfg, bool&
     if (show) {
         ImGui::Indent(kSubGroupIndent);
 
-        static const char* const kModeOptions[]    = { "Auto", "Profile", "Custom" };
-        static const char* const kProfileOptions[] = { "Percussive", "Melodic", "Sustained" };
+        static const char* const kModeOptions[]    = { "自动", "预设", "自定" };
+        static const char* const kProfileOptions[] = { "敲击", "旋律", "持续" };
 
         const int prev_mode_idx = static_cast<int>(cfg.beat.mode);
-        const int new_mode_idx = segmented_row("Mode", kModeOptions, 3, prev_mode_idx);
+        const int new_mode_idx = segmented_row("模式", kModeOptions, 3, prev_mode_idx);
         if (new_mode_idx != prev_mode_idx) {
             // Mode transition. If the user is heading into Custom, seed the
             // slider from whatever the system was using a moment ago — Auto's
@@ -778,39 +779,39 @@ static void section_beat(const AudioSnapshot& snap, config::Settings& cfg, bool&
             cfg.beat.mode = static_cast<BMode>(new_mode_idx);
             dirty = true;
         }
-        tip("How beat detection picks its sensitivity:\n"
-            "  • Auto — observes the audio and tunes itself (takes a few seconds)\n"
-            "  • Profile — pick a preset by signal character\n"
-            "  • Custom — drive the Pulse Strength slider yourself");
+        tip("节拍检测敏感方法：\n"
+            "  • 自动 — 侦测音频并自动调节，需要数秒时间\n"
+            "  • 预设 — 手动选择音频类型预设\n"
+            "  • 自定 — 完全手动调整各个脉冲滑块");
 
         if (cfg.beat.mode == BMode::Auto) {
-            label_left("Status");
+            label_left("状态");
             if (snap.beat_auto_locked) {
-                ImGui::TextDisabled("Locked (strength %.2f)", snap.beat_pulse_strength);
+                ImGui::TextDisabled("锁定 (强度 %.2f)", snap.beat_pulse_strength);
             } else {
-                ImGui::TextDisabled("Adapting... (strength %.2f)",
+                ImGui::TextDisabled("适应... (强度 %.2f)",
                                     snap.beat_pulse_strength);
             }
         } else if (cfg.beat.mode == BMode::Profile) {
             const int prev_prof_idx = static_cast<int>(cfg.beat.profile);
-            const int new_prof_idx = segmented_row("Character", kProfileOptions, 3,
+            const int new_prof_idx = segmented_row("特征", kProfileOptions, 3,
                                                    prev_prof_idx);
             if (new_prof_idx != prev_prof_idx) {
                 cfg.beat.profile = static_cast<BProf>(new_prof_idx);
                 dirty = true;
             }
-            tip("Pre-cooked sensitivity, per-band weighting, and decay time tuned for one signal character.\n"
-                "  • Percussive — drums, EDM, hip-hop. Bass-driven, tight pulse.\n"
-                "  • Melodic — vocal, rock, jazz, classical. Balanced bands.\n"
-                "  • Sustained — ambient, cinematic, sparse. Sensitive across bands, longer decay.\n"
-                "Names describe the signal, not the genre.");
+            tip("预置的检测敏感类型，频带权重与衰减时间特征已调好。\n"
+                "  • 敲击 — 鼓点、电子舞曲、hip-hop。检测低频，短脉冲。\n"
+                "  • 旋律 — 人声、摇滚、爵士、古典。均衡频带。\n"
+                "  • 持续 — 环境、电影、空旷。跨频带检测，衰减更长。\n"
+                "以上描述的是音频信号类型，不完全对应音乐流派。");
         } else {  // Custom
-            if (slider_row("Pulse Strength", &cfg.beat.pulse_strength, 0.0f, 3.0f, "%.2f"))
+            if (slider_row("脉冲强度", &cfg.beat.pulse_strength, 0.0f, 3.0f, "%.2f"))
                 dirty = true;
-            tip("How reactive the Pulse meter (and the listeningway_beat shader uniform) is.\n"
-                "  • 0.0 — off; no triggers\n"
-                "  • 1.0 — balanced default\n"
-                "  • 2-3 — more reactive; useful for sparse / quiet content");
+            tip("脉冲量表以及listeningway_beat参数的响应强度。\n"
+                "  • 0.0 — 关，不触发\n"
+                "  • 1.0 — 平衡的默认值\n"
+                "  • 2-3 — 响应更活跃，适用于空旷安静内容");
         }
 
         ImGui::Unindent(kSubGroupIndent);
@@ -837,14 +838,14 @@ static void section_spectrum(const AudioSnapshot& snap, config::Settings& cfg, b
     const uint32_t n = std::min<uint32_t>(snap.freq_band_count,
                                            static_cast<uint32_t>(kSpectrumMaxBands));
     char hint[24];
-    std::snprintf(hint, sizeof(hint), "%u bands", n);
+    std::snprintf(hint, sizeof(hint), "%u 频带", n);
 
     // Custom section header: title + hint + ~ toggle + subtle settings
     // disclosure, all on one line.
     ImGui::PushID("spectrum");
     ImGui::Spacing();
     ImGui::AlignTextToFramePadding();
-    ImGui::TextUnformatted("Spectrum");
+    ImGui::TextUnformatted("频谱");
     ImGui::SameLine();
     ImGui::AlignTextToFramePadding();
     ImGui::TextDisabled("(%s)", hint);
@@ -855,7 +856,7 @@ static void section_spectrum(const AudioSnapshot& snap, config::Settings& cfg, b
 
     // Compute right-aligned position for [~] [settings] cluster.
     const char* tilde = "~";
-    const char* settings_label = show ? "settings *" : "settings \xC2\xB7";
+    const char* settings_label = show ? "设置 *" : "设置 \xC2\xB7";
     const float pad      = ImGui::GetStyle().FramePadding.x * 2.0f;
     const float spacing  = ImGui::GetStyle().ItemSpacing.x;
     const float tilde_w    = ImGui::CalcTextSize(tilde).x          + pad;
@@ -877,8 +878,8 @@ static void section_spectrum(const AudioSnapshot& snap, config::Settings& cfg, b
     ImGui::PopStyleColor(4);
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("%s", cfg.ui.spectrum_orientation == Orient::Horizontal
-            ? "Switch to vertical band stack"
-            : "Switch to horizontal spectrum");
+            ? "切换到垂直频带堆叠"
+            : "切换到水平频谱");
     }
 
     // Subtle settings disclosure (inline; mirrors subtle_settings_toggle).
@@ -912,51 +913,51 @@ static void section_spectrum(const AudioSnapshot& snap, config::Settings& cfg, b
 
     if (show) {
         ImGui::Indent(kSubGroupIndent);
-        if (slider_row("Bands Boost", &cfg.frequency.amplifier_bands, 1.0f, 11.0f, "%.2f"))
+        if (slider_row("频带增强", &cfg.frequency.amplifier_bands, 1.0f, 11.0f, "%.2f"))
             dirty = true;
-        tip("Visual-only multiplier on the spectrum readouts and the listeningway_freqbands uniform.\nTechnical: frequency.amplifier_bands, [1, 11]");
-        if (slider_row("Bass detail", &cfg.frequency.log_strength, 0.01f, 1.5f, "%.2f"))
+        tip("放大读出的频谱值和相应的listeningway_freqbands参数。\n实现: frequency.amplifier_bands, [1, 11]");
+        if (slider_row("低频细节", &cfg.frequency.log_strength, 0.01f, 1.5f, "%.2f"))
             dirty = true;
-        tip("Higher = more visible detail in the bass bands; lower = flatter spectrum.\nTechnical: frequency.log_strength, [0.01, 1.5]");
+        tip("数值越高，低频带的可见细节越多，反之频谱越平。\n实现: frequency.log_strength, [0.01, 1.5]");
 
-        subgroup_label("Equalizer (5-band):");
+        subgroup_label("均衡器 (5频带):");
         ImGui::Indent(kSubGroupIndent);
-        const char* const eq_names[5] = {"Bass", "Low-Mid", "Mid", "High-Mid", "Treble"};
+        const char* const eq_names[5] = {"低", "中低", "中", "中高", "高"};
         for (int i = 0; i < 5; ++i) {
             if (slider_row(eq_names[i], &cfg.frequency.equalizer_bands[i], 0.0f, 4.0f, "%.2f"))
                 dirty = true;
         }
-        if (slider_row("Equalizer width", &cfg.frequency.equalizer_width, 0.05f, 0.5f, "%.2f"))
+        if (slider_row("均衡器宽度", &cfg.frequency.equalizer_width, 0.05f, 0.5f, "%.2f"))
             dirty = true;
-        tip("Width of each EQ knob's influence (Gaussian σ).\nTechnical: frequency.equalizer_width");
+        tip("每个EQ滑块影响的频宽，单位为标准差。\n实现: frequency.equalizer_width");
         ImGui::Unindent(kSubGroupIndent);
 
-        subgroup_label("Advanced:");
+        subgroup_label("高级:");
         ImGui::Indent(kSubGroupIndent);
-        const char* const scales[] = {"Linear", "Log", "Mel (Slaney)"};
+        const char* const scales[] = {"线性", "对数", "梅尔 (Slaney)"};
         int scale = static_cast<int>(cfg.frequency.band_scale);
-        if (combo_row("Band scale", &scale, scales, 3)) {
+        if (combo_row("频带比例", &scale, scales, 3)) {
             cfg.frequency.band_scale =
                 static_cast<config::FrequencyConfig::BandScale>(scale);
             dirty = true;
         }
-        tip("How frequencies map onto the bands.\n  • Mel: matches human pitch perception.\n  • Log: v1 default.\n  • Linear: legacy.\nTechnical: frequency.band_scale");
+        tip("频率映射到频带的方法。\n  • 梅尔：对应人耳感知。\n  • 对数：聆听威V1默认选项。\n  • 线性：旧模式。\n实现: frequency.band_scale");
 
-        if (slider_int_row("Band count", &cfg.frequency.band_count, 8, 128))
+        if (slider_int_row("频带数", &cfg.frequency.band_count, 8, 128))
             dirty = true;
-        tip("Number of frequency bands published. Must match shader array size.\nTechnical: frequency.band_count, [8, 128]");
-        if (slider_int_row("Analysis resolution (FFT)", &cfg.frequency.fft_size, 256, 8192))
+        tip("提供的频带数量。必须对应着色器的数组大小。\n实现: frequency.band_count, [8, 128]");
+        if (slider_int_row("分析结果 (FFT)", &cfg.frequency.fft_size, 256, 8192))
             dirty = true;
-        tip("FFT window size. Higher = more frequency detail, more CPU. Power-of-two recommended.\nTechnical: frequency.fft_size");
-        if (slider_row("Low cutoff (Hz)", &cfg.frequency.min_freq, 10.0f, 500.0f, "%.0f"))
+        tip("FFT窗宽度。数值越高，频率细节越多，CPU负载越大。推荐设为2的幂次。\n实现: frequency.fft_size");
+        if (slider_row("低频截止 (Hz)", &cfg.frequency.min_freq, 10.0f, 500.0f, "%.0f"))
             dirty = true;
-        tip("Lowest frequency included.\nTechnical: frequency.min_freq, Hz");
-        if (slider_row("High cutoff (Hz)", &cfg.frequency.max_freq, 2000.0f, 22050.0f, "%.0f"))
+        tip("低频边界。\n实现: frequency.min_freq, Hz");
+        if (slider_row("高频截止 (Hz)", &cfg.frequency.max_freq, 2000.0f, 22050.0f, "%.0f"))
             dirty = true;
-        tip("Highest frequency included.\nTechnical: frequency.max_freq, Hz");
-        if (slider_row("Magnitude scaling", &cfg.frequency.band_norm, 0.001f, 1.0f, "%.3f"))
+        tip("高频边界。\n实现: frequency.max_freq, Hz");
+        if (slider_row("幅度缩放", &cfg.frequency.band_norm, 0.001f, 1.0f, "%.3f"))
             dirty = true;
-        tip("Raw FFT magnitude → band amplitude scaling factor.\nTechnical: frequency.band_norm");
+        tip("原始FFT幅度到频带幅度的缩放因子。\n实现: frequency.band_norm");
         ImGui::Unindent(kSubGroupIndent);
         ImGui::Unindent(kSubGroupIndent);
     }
@@ -967,7 +968,7 @@ static void section_spectrum(const AudioSnapshot& snap, config::Settings& cfg, b
 static void section_spatial(const AudioSnapshot& snap, config::Settings& cfg, bool& dirty) {
     using namespace overlay_style;
     const char* fmt_label = format_label(static_cast<int>(snap.audio_format));
-    const bool show = section_header_with_settings("Spatial", fmt_label, "spatial");
+    const bool show = section_header_with_settings("空间", fmt_label, "spatial");
 
     const float dir_amp = cfg.frequency.amplifier_direction;
     const char* const labels[8] = { "F", "FR", "R", "BR", "B", "BL", "L", "FL" };
@@ -1044,16 +1045,16 @@ static void section_spatial(const AudioSnapshot& snap, config::Settings& cfg, bo
 
     if (show) {
         ImGui::Indent(kSubGroupIndent);
-        if (slider_row("Direction Boost", &cfg.frequency.amplifier_direction,
+        if (slider_row("方向增强", &cfg.frequency.amplifier_direction,
                         1.0f, 11.0f, "%.2f"))
             dirty = true;
-        tip("Visual-only multiplier on the directional uniforms (listeningway_front, _front_right, etc.).\nTechnical: frequency.amplifier_direction, [1, 11]");
-        if (slider_row("Spread", &cfg.frequency.spatial_spread, 0.0f, 0.5f, "%.2f"))
+        tip("放大读出的方向参数（listeningway_front、_front_right等）\n实现: frequency.amplifier_direction, [1, 11]");
+        if (slider_row("扩散", &cfg.frequency.spatial_spread, 0.0f, 0.5f, "%.2f"))
             dirty = true;
-        tip("How much each direction's energy bleeds into its two neighbours on the rose. 0 = sharp peaks per channel; 0.5 = soft glow.\nTechnical: frequency.spatial_spread, [0, 0.5]");
-        if (slider_row("Smoothing", &cfg.frequency.spatial_smoothing, 0.0f, 0.95f, "%.2f"))
+        tip("玫瑰图每个方向的能量扩散到相邻方向的强度。0 = 每个方向出现锐利峰值；0.5 = 平滑。\n实现: frequency.spatial_spread, [0, 0.5]");
+        if (slider_row("平滑", &cfg.frequency.spatial_smoothing, 0.0f, 0.95f, "%.2f"))
             dirty = true;
-        tip("Temporal smoothing on the rose. 0 = raw per-frame; higher = calmer rose, slower to react.\nTechnical: frequency.spatial_smoothing, [0, 0.95]");
+        tip("玫瑰图的时间平滑。0 = 原样逐帧显示；数值越高玫瑰越平滑。\n实现: frequency.spatial_smoothing, [0, 0.95]");
         ImGui::Unindent(kSubGroupIndent);
     }
 }
@@ -1062,11 +1063,11 @@ static void section_spatial(const AudioSnapshot& snap, config::Settings& cfg, bo
 
 static void section_advanced(const AudioSnapshot& snap, config::Settings& cfg, bool& dirty) {
     using namespace overlay_style;
-    const bool show = section_header_with_settings("Advanced", nullptr, "advanced");
+    const bool show = section_header_with_settings("高级", nullptr, "advanced");
 
     const ImU32 fill = ImGui::GetColorU32(ImGuiCol_PlotHistogram);
 
-    subgroup_label("Auto-leveled (1.0 = recent average loudness):");
+    subgroup_label("自动电平 (1.0 = 近期平均响度):");
     ImGui::Indent(kSubGroupIndent);
     const float scale = 1.0f / std::max(0.1f, cfg.agc.clamp_max);
     auto leveled_row = [&](const char* lbl, float v) {
@@ -1076,69 +1077,69 @@ static void section_advanced(const AudioSnapshot& snap, config::Settings& cfg, b
     };
     {
         TightRowSpacing tight;
-        leveled_row("Volume", snap.volume_norm);
-        leveled_row("Bass",   snap.bass_norm);
-        leveled_row("Mid",    snap.mid_norm);
-        leveled_row("Treble", snap.treb_norm);
+        leveled_row("音量", snap.volume_norm);
+        leveled_row("低频",   snap.bass_norm);
+        leveled_row("中频",    snap.mid_norm);
+        leveled_row("高频", snap.treb_norm);
     }
     ImGui::Unindent(kSubGroupIndent);
 
-    subgroup_label("Energy phases:");
+    subgroup_label("能量相位:");
     ImGui::Indent(kSubGroupIndent);
     {
         TightRowSpacing tight;
-        meter_row("Volume", snap.phase_volume, fill);
-        meter_row("Bass",   snap.phase_bass,   fill);
-        meter_row("Treble", snap.phase_treble, fill);
+        meter_row("音量", snap.phase_volume, fill);
+        meter_row("低频",   snap.phase_bass,   fill);
+        meter_row("高频", snap.phase_treble, fill);
     }
     ImGui::Unindent(kSubGroupIndent);
 
-    subgroup_label("Perceptual:");
+    subgroup_label("感知:");
     ImGui::Indent(kSubGroupIndent);
     {
         TightRowSpacing tight;
-        meter_row("Brightness", snap.spectral_centroid, fill, "%.3f");
-        meter_row("Loudness",   std::clamp(snap.loudness, 0.0f, 1.0f), fill, "%.2f");
+        meter_row("亮度", snap.spectral_centroid, fill, "%.3f");
+        meter_row("响度",   std::clamp(snap.loudness, 0.0f, 1.0f), fill, "%.2f");
     }
     ImGui::Unindent(kSubGroupIndent);
 
     if (show) {
         ImGui::Indent(kSubGroupIndent);
 
-        subgroup_label("Energy phases (rate per band):");
+        subgroup_label("能量相位 (分频带比率):");
         ImGui::Indent(kSubGroupIndent);
-        if (slider_row("Volume rate", &cfg.chronotensity.gain_volume, 0.0f, 5.0f, "%.2f"))
+        if (slider_row("音量比率", &cfg.chronotensity.gain_volume, 0.0f, 5.0f, "%.2f"))
             dirty = true;
-        tip("How fast the volume-driven phase advances per unit of auto-leveled volume.\nTechnical: chronotensity.gain_volume");
-        if (slider_row("Bass rate", &cfg.chronotensity.gain_bass, 0.0f, 5.0f, "%.2f"))
+        tip("音量驱动的相位超前于自动电平音量的程度。\n实现: chronotensity.gain_volume");
+        if (slider_row("低频比率", &cfg.chronotensity.gain_bass, 0.0f, 5.0f, "%.2f"))
             dirty = true;
-        tip("Rate for the bass-driven phase.\nTechnical: chronotensity.gain_bass");
-        if (slider_row("Treble rate", &cfg.chronotensity.gain_treble, 0.0f, 5.0f, "%.2f"))
+        tip("低频相位比率。\n实现: chronotensity.gain_bass");
+        if (slider_row("高频比率", &cfg.chronotensity.gain_treble, 0.0f, 5.0f, "%.2f"))
             dirty = true;
-        tip("Rate for the treble-driven phase.\nTechnical: chronotensity.gain_treble");
+        tip("高频相位比率。\n实现: chronotensity.gain_treble");
         ImGui::Unindent(kSubGroupIndent);
 
-        subgroup_label("Auto-leveling (AGC):");
+        subgroup_label("自动电平 (AGC):");
         ImGui::Indent(kSubGroupIndent);
-        if (slider_row("Window (s)", &cfg.agc.window_seconds, 0.5f, 30.0f, "%.1f"))
+        if (slider_row("滑窗 (s)", &cfg.agc.window_seconds, 0.5f, 30.0f, "%.1f"))
             dirty = true;
-        tip("Running-mean window for auto-leveling.\nTechnical: agc.window_seconds");
-        if (slider_row("Clamp max", &cfg.agc.clamp_max, 1.5f, 8.0f, "%.1f"))
+        tip("自动电平的均值滑窗。\n实现: agc.window_seconds");
+        if (slider_row("限位", &cfg.agc.clamp_max, 1.5f, 8.0f, "%.1f"))
             dirty = true;
-        tip("Upper bound on the auto-leveled value.\nTechnical: agc.clamp_max");
-        if (slider_row("Smoothing attack (ms)", &cfg.agc.att_attack_ms, 1.0f, 1000.0f, "%.0f"))
+        tip("自动电平上界。\n实现: agc.clamp_max");
+        if (slider_row("平滑突发 (ms)", &cfg.agc.att_attack_ms, 1.0f, 1000.0f, "%.0f"))
             dirty = true;
-        tip("How fast the smoothed (_att) sibling rises.\nTechnical: agc.att_attack_ms");
-        if (slider_row("Smoothing release (ms)", &cfg.agc.att_release_ms, 1.0f, 5000.0f, "%.0f"))
+        tip("平滑电平的上升速度。\n实现: agc.att_attack_ms");
+        if (slider_row("平滑释放 (ms)", &cfg.agc.att_release_ms, 1.0f, 5000.0f, "%.0f"))
             dirty = true;
-        tip("How fast the smoothed sibling falls.\nTechnical: agc.att_release_ms");
+        tip("平滑电平的释放速度。\n实现: agc.att_release_ms");
         ImGui::Unindent(kSubGroupIndent);
 
-        subgroup_label("Loudness:");
+        subgroup_label("响度:");
         ImGui::Indent(kSubGroupIndent);
-        if (slider_row("Window (ms)", &cfg.loudness.window_ms, 50.0f, 3000.0f, "%.0f"))
+        if (slider_row("滑窗 (ms)", &cfg.loudness.window_ms, 50.0f, 3000.0f, "%.0f"))
             dirty = true;
-        tip("K-weighted RMS window. 400 ms = BS.1770 'momentary' loudness.\nTechnical: loudness.window_ms");
+        tip("加权方均根滑窗。400 ms = ITU BS.1770 短时响度。\n实现: loudness.window_ms");
         ImGui::Unindent(kSubGroupIndent);
         ImGui::Unindent(kSubGroupIndent);
     }
@@ -1150,11 +1151,11 @@ static void section_performance(const AudioSnapshot& snap) {
     using namespace overlay_style;
 
     char hint[32];
-    std::snprintf(hint, sizeof(hint), "%.1f \xC2\xB5s total", snap.pipeline_micros);
-    section_header_only("Performance", hint);
+    std::snprintf(hint, sizeof(hint), "总 %.1f us", snap.pipeline_micros);
+    section_header_only("性能", hint);
 
     if (snap.stage_count == 0) {
-        ImGui::TextDisabled("(no timings yet)");
+        ImGui::TextDisabled("(暂无时间)");
         return;
     }
     float max_micros = 1.0f;
@@ -1195,7 +1196,7 @@ bool host_port_rows(const char* prefix, std::string& host, int& port,
                      int port_lo, int port_hi) {
     bool changed = false;
 
-    label_left("Host");
+    label_left("主机");
     char host_buf[64] = {};
     std::snprintf(host_buf, sizeof(host_buf), "%s", host.c_str());
     char id[40]; std::snprintf(id, sizeof(id), "##host_%s", prefix);
@@ -1205,9 +1206,9 @@ bool host_port_rows(const char* prefix, std::string& host, int& port,
         changed = true;
     }
     ImGui::PopItemWidth();
-    tip("Destination address. 127.0.0.1 = this machine. Anything else sends data over the network.");
+    tip("目标地址。127.0.0.1 = 本机。设置为其他值则通过网络发送数据。");
 
-    label_left("Port");
+    label_left("端口");
     char id2[40]; std::snprintf(id2, sizeof(id2), "##port_%s", prefix);
     ImGui::PushItemWidth(-1);
     if (ImGui::InputInt(id2, &port)) {
@@ -1227,34 +1228,34 @@ void section_integrations(config::Settings& cfg, bool& dirty,
         (cfg.network.osc.enabled ? 1 : 0) +
         (cfg.network.openrgb.enabled ? 1 : 0);
     char hint[24];
-    if (active_count == 0) std::snprintf(hint, sizeof(hint), "none active");
-    else                   std::snprintf(hint, sizeof(hint), "%d active", active_count);
-    section_header_only("Integrations", hint);
+    if (active_count == 0) std::snprintf(hint, sizeof(hint), "无活跃");
+    else                   std::snprintf(hint, sizeof(hint), "%d 活跃", active_count);
+    section_header_only("集成", hint);
 
     // ---- OSC ------------------------------------------------------------
     {
         std::string status;
         if (auto* c = registry.find_by_id("osc")) status = c->status_line();
 
-        if (integration_row("OSC", cfg.network.osc.enabled, dirty,
+        if (integration_row("振荡器[OSC]", cfg.network.osc.enabled, dirty,
                              status, "osc")) {
             ImGui::Indent(kSubGroupIndent * 2.0f);
-            ImGui::TextDisabled("Send to creative tools:\n"
+            ImGui::TextDisabled("发送到创意工具：\n"
                 "TouchDesigner, Resolume, Max/MSP, vvvv, MadMapper, VRChat OSC.\n"
-                "Send-only — no port is opened on this machine. Safe in any anti-cheat context.");
+                "只发送 — 本机不开放端口，不会触发反作弊。");
             ImGui::Spacing();
             if (host_port_rows("osc", cfg.network.osc.host, cfg.network.osc.port, 1, 65535))
                 dirty = true;
-            if (slider_int_row("Update rate (Hz)", &cfg.network.osc.rate_hz, 1, 120)) {
+            if (slider_int_row("回报率 (Hz)", &cfg.network.osc.rate_hz, 1, 120)) {
                 cfg.network.osc.rate_hz = std::clamp(cfg.network.osc.rate_hz, 1, 120);
                 dirty = true;
             }
-            tip("How often to send each OSC message per second. Default 60.\nTechnical: network.osc.rate_hz, [1, 120]");
-            label_left("Test");
-            if (ImGui::Button("Send test packet##osc", ImVec2(-1, 0))) {
+            tip("每秒发送OSC消息的次数。默认为60。\n实现: network.osc.rate_hz, [1, 120]");
+            label_left("测试");
+            if (ImGui::Button("发送测试数据包##osc", ImVec2(-1, 0))) {
                 if (auto* c = registry.find_by_id("osc")) c->send_test_packet();
             }
-            tip("Sends a single /listeningway/test message. Use samples/integration_harness.py to verify reception.");
+            tip("发送单个聆听威测试包。使用samples/integration_harness.py验证接收端。");
             ImGui::Unindent(kSubGroupIndent * 2.0f);
         }
     }
@@ -1276,10 +1277,9 @@ void section_integrations(config::Settings& cfg, bool& dirty,
         if (integration_row("OpenRGB", cfg.network.openrgb.enabled, dirty,
                              status, "openrgb")) {
             ImGui::Indent(kSubGroupIndent * 2.0f);
-            ImGui::TextDisabled("Drive RGB peripherals:\n"
-                "Connects to a running OpenRGB server to light up keyboards,\n"
-                "mice, RAM, fans, and case strips along with your music.\n"
-                "Client-only — no port is opened on this machine.");
+            ImGui::TextDisabled("驱动RGB外设:\n"
+                "连接到运行中的OpenRGB服务器，用音乐点亮键盘鼠标内存风扇机箱灯条。\n"
+                "仅客户端 — 本机不开放端口。");
             ImGui::Spacing();
             if (host_port_rows("openrgb", cfg.network.openrgb.host,
                                 cfg.network.openrgb.port, 1, 65535))
@@ -1294,18 +1294,18 @@ void section_integrations(config::Settings& cfg, bool& dirty,
             using MatrixP = config::OpenRgbConfig::MatrixPattern;
 
             static const char* const kSingleNames[] = {
-                "Beat Flash", "Volume Pulse", "Spectral Hue",
-                "Chronotensity Cycle", "Static", "Off",
+                "节拍闪烁", "音量脉冲", "频谱色相",
+                "时间循环", "静态", "关",
             };
             static const char* const kLinearNames[] = {
-                "Spectrum Bar", "VU Meter", "Chase / Orbit",
-                "Pulse from Center", "Stereo Split", "Color Wash",
-                "Static", "Off",
+                "频谱条", "VU 量表", "追逐 / 环绕",
+                "中心涟漪", "立体声分区", "染色",
+                "静态", "关",
             };
             static const char* const kMatrixNames[] = {
-                "Spatial Map", "Equalizer Columns", "Per-Region",
-                "Spectrogram Waterfall", "Beat Flash", "Color Wash",
-                "Static", "Off",
+                "空间图", "均衡列", "分区",
+                "频谱瀑布图", "节拍刷新", "染色",
+                "静态", "关",
             };
 
             auto pattern_dropdown_row = [&](const char* type_name, int count,
@@ -1330,63 +1330,63 @@ void section_integrations(config::Settings& cfg, bool& dirty,
             };
 
             int s = static_cast<int>(cfg.network.openrgb.pattern_single);
-            if (pattern_dropdown_row("Single", n_single, kSingleNames,
+            if (pattern_dropdown_row("单灯", n_single, kSingleNames,
                                        static_cast<int>(std::size(kSingleNames)), &s)) {
                 cfg.network.openrgb.pattern_single = static_cast<SingleP>(s);
                 dirty = true;
             }
-            tip("Pattern for 1-LED zones (GPU accents, AIO pumps).\n"
-                "Ordered active → soothing.\n"
-                "  • Beat Flash — pulses on each beat\n"
-                "  • Volume Pulse — brightness rises and falls\n"
-                "  • Spectral Hue — hue from spectral centroid (default)\n"
-                "  • Chronotensity Cycle — hue rotates always\n"
-                "  • Static / Off");
+            tip("用于单个LED区域的图案（GPU氛围灯、水冷水泵）\n"
+                "以下从活跃到舒缓排列\n"
+                "  • 节拍闪烁 — 按节拍脉冲亮起\n"
+                "  • 音量 — 亮度随音量升降\n"
+                "  • 频谱色相 — 频谱中心色相 （默认）\n"
+                "  • 时间循环 — 色相总是循环\n"
+                "  • 静态 / 关");
 
             int l = static_cast<int>(cfg.network.openrgb.pattern_linear);
-            if (pattern_dropdown_row("Linear", n_linear, kLinearNames,
+            if (pattern_dropdown_row("灯带", n_linear, kLinearNames,
                                        static_cast<int>(std::size(kLinearNames)), &l)) {
                 cfg.network.openrgb.pattern_linear = static_cast<LinearP>(l);
                 dirty = true;
             }
-            tip("Pattern for 1D-strip zones (RAM, case strips, fan rings, motherboard accents).\n"
-                "Ordered active → soothing.\n"
-                "  • Spectrum Bar — freq across length (default)\n"
-                "  • VU Meter — fills with volume, peak-hold dot\n"
-                "  • Chase / Orbit — chronotensity-driven comet\n"
-                "  • Pulse from Center — bass + beat ripples outward\n"
-                "  • Stereo Split — left half / right half by L/R volume\n"
-                "  • Color Wash / Static / Off");
+            tip("用于线形区域的图案 （内存、机箱灯条、风扇灯环、主板氛围灯）\n"
+                "以下从活跃到舒缓排列\n"
+                "  • 频谱条 — 频率沿长度方向分布（默认）\n"
+                "  • VU 量表 — 显示音量与峰值保持点\n"
+                "  • 追逐 / 环绕 — 时间驱动的彗星拖尾\n"
+                "  • 中心涟漪 — 低频与节拍产生向外波纹\n"
+                "  • 立体声分区 — 根据左右音量切换左半/右半\n"
+                "  • 节拍刷新 / 染色 / 静态 / 关");
 
             int m = static_cast<int>(cfg.network.openrgb.pattern_matrix);
-            if (pattern_dropdown_row("Matrix", n_matrix, kMatrixNames,
+            if (pattern_dropdown_row("矩阵", n_matrix, kMatrixNames,
                                        static_cast<int>(std::size(kMatrixNames)), &m)) {
                 cfg.network.openrgb.pattern_matrix = static_cast<MatrixP>(m);
                 dirty = true;
             }
-            tip("Pattern for 2D-grid zones (keyboards, mouse pads).\n"
-                "Ordered active → soothing.\n"
-                "  • Spatial Map — direction8 → keyboard XY\n"
-                "  • Equalizer Columns — N freq bands as vertical bars\n"
-                "  • Per-Region — bass at bottom, treble at top, beat at spacebar (default)\n"
-                "  • Spectrogram Waterfall — time scrolls down rows\n"
-                "  • Beat Flash / Color Wash / Static / Off");
+            tip("灯光矩阵的图案（键盘、鼠标垫）\n"
+                "以下从活跃到舒缓排列\n"
+                "  • 空间图 — 8方向 → 键盘 XY\n"
+                "  • 均衡列 — N频率带转换为纵向条带\n"
+                "  • 分区 — 低频在下高频在上，节拍位于空格键（默认）\n"
+                "  • 频谱瀑布图 — 随时间滚动行\n"
+                "  • 节拍刷新 / 染色 / 静态 / 关");
 
             ImGui::Spacing();
 
-            if (slider_int_row("Update rate (Hz)", &cfg.network.openrgb.rate_hz, 5, 60)) {
+            if (slider_int_row("更新率 (Hz)", &cfg.network.openrgb.rate_hz, 5, 60)) {
                 cfg.network.openrgb.rate_hz = std::clamp(cfg.network.openrgb.rate_hz, 5, 60);
                 dirty = true;
             }
-            tip("Frame rate. Default 30. The OpenRGB server has known CPU issues above ~60 Hz.\nTechnical: network.openrgb.rate_hz, [5, 60]");
-            if (slider_row("Brightness", &cfg.network.openrgb.brightness, 0.0f, 1.0f, "%.2f"))
+            tip("帧率。默认为30，当前OpenRGB服务器在帧率大于~60Hz时存在CPU问题。\n实现: network.openrgb.rate_hz, [5, 60]");
+            if (slider_row("亮度", &cfg.network.openrgb.brightness, 0.0f, 1.0f, "%.2f"))
                 dirty = true;
-            tip("Global multiplier on output color intensity (0..1).\nTechnical: network.openrgb.brightness");
-            label_left("Test");
-            if (ImGui::Button("Flash all LEDs##openrgb", ImVec2(-1, 0))) {
+            tip("输出颜色强度的全局倍率 (0..1).\n实现: network.openrgb.brightness");
+            label_left("测试");
+            if (ImGui::Button("闪烁所有LED ##openrgb", ImVec2(-1, 0))) {
                 if (orgb) orgb->send_test_packet();
             }
-            tip("Connects briefly and flashes every LED to white for one frame. Verifies the server is reachable and devices respond.");
+            tip("连接并闪烁所有LED 1帧时间。验证OpenRGB服务器的连接性以及设备响应。");
             ImGui::Unindent(kSubGroupIndent * 2.0f);
         }
     }
@@ -1398,31 +1398,31 @@ void section_integrations(config::Settings& cfg, bool& dirty,
 
 static void section_settings(config::Store& store, config::Settings& cfg,
                               AudioSystem& system, bool& dirty) {
-    section_header_only("Settings", nullptr);
+    section_header_only("设置", nullptr);
 
     ImGui::Columns(3, "##settings_buttons", false);
-    if (ImGui::Button("Save", ImVec2(-1, 0))) store.save();
-    tip("Save current settings to Listeningway.json (next to the addon).");
+    if (ImGui::Button("保存", ImVec2(-1, 0))) store.save();
+    tip("保存当前设置到 Listeningway.json（插件旁）");
     ImGui::NextColumn();
-    if (ImGui::Button("Load", ImVec2(-1, 0))) store.load();
-    tip("Reload Listeningway.json from disk. Discards any unsaved changes.");
+    if (ImGui::Button("加载", ImVec2(-1, 0))) store.load();
+    tip("放弃未保存的更改，重新从磁盘加载 Listeningway.json。");
     ImGui::NextColumn();
-    if (ImGui::Button("Reset", ImVec2(-1, 0))) {
+    if (ImGui::Button("重置", ImVec2(-1, 0))) {
         store.publish(config::Settings{});
         store.save();
     }
-    tip("Reset all settings to defaults and save.");
+    tip("重置所有选项为默认值并保存。");
     ImGui::Columns(1);
 
-    if (ImGui::Button("Restart audio pipeline", ImVec2(-1, 0))) {
+    if (ImGui::Button("重启音频流水线", ImVec2(-1, 0))) {
         system.switch_source(cfg.audio.capture_source_code);
     }
-    tip("Stop and restart the active source. Use this after changing the FFT size or band count.");
+    tip("停止并重启活跃源。调整FFT尺寸和频带数量后需要使用。");
 
-    if (ImGui::Checkbox("Debug logging", &cfg.debug.debug_logging)) dirty = true;
-    tip("Verbose log to listeningway.log next to the addon.\nTechnical: debug.debug_logging");
+    if (ImGui::Checkbox("调试日志", &cfg.debug.debug_logging)) dirty = true;
+    tip("导出详细日志为插件旁的 listeningway.log。\n实现: debug.debug_logging");
 
-    ImGui::TextDisabled("Config file: %s", store.path().u8string().c_str());
+    ImGui::TextDisabled("配置文件: %s", store.path().u8string().c_str());
 }
 
 // ---- Top level ----------------------------------------------------------
