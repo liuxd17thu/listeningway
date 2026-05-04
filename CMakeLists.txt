@@ -97,7 +97,7 @@ endif()
 # --- Output Configuration ---
 # Ensure the output DLL is named correctly (e.g., Listeningway.dll)
 # CMake usually handles this based on the project name, but you can force it:
-# set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "Listeningway")
+set_target_properties(${PROJECT_NAME} PROPERTIES SUFFIX ".addon64")
 
 # Optional: Set output directory for the DLL if desired
 # set_target_properties(${PROJECT_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
